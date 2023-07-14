@@ -1,8 +1,8 @@
+import os
 import xlwings as xw
 import pandas as pd
 import tkinter as tk
 from tkinter import filedialog, Text, Button
-
 
 def select_file():
     # Open a file selection dialog
@@ -15,15 +15,24 @@ def select_file():
 def fetch_data():
     # Get the selected file path
     file_path = file_entry.get()
-    print(file_path)
 
-    # Open the Excel file
-    print("Opening file...")
-    wb = xw.books.open(file_path)
-    print("File successfully opened")
+    # Check if the file is already open
+    is_file_open = False
+    for app in xw.apps:
+        for wb in app.books:
+            if wb.name in file_path:
+                is_file_open = True
+                wb_to_use = wb
+                break
+        if is_file_open:
+            break
+
+    # If the file is not open, open it
+    if not is_file_open:
+        wb_to_use = xw.books.open(file_path)
 
     # Get the "05-2022" sheet of the workbook
-    source_sheet = wb.sheets['05-2022']
+    source_sheet = wb_to_use.sheets['05-2022']
 
     # Find the last row with data in column A of the source sheet
     last_row = source_sheet.range("A" + str(source_sheet.cells.last_cell.row)).end("up").row
@@ -46,7 +55,7 @@ def fetch_data():
     # Create a DataFrame from the filtered data
     df = pd.DataFrame(filtered_data, columns=columns)
 
-    # Convert the values in the 'schAcode' column to strings
+    # Convert the values in the 'sch A acc' column to strings
     df['sch A acc'] = df['sch A acc'].astype(str)
 
     # Display the data in the GUI

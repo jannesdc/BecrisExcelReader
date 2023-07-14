@@ -16,7 +16,6 @@ def select_file():
     print(root.filename)
     fetch_button.config(state=tk.NORMAL)
 
-
 def fetch_data():
     global dataframe
     global wb_to_use
@@ -36,7 +35,7 @@ def fetch_data():
 
     # If the file is not open, open it
     if not is_file_open:
-        wb_to_use = xw.books.open(file_path)
+        wb_to_use = xw.Book(file_path)
 
     # Get the "05-2022" sheet of the workbook
     source_sheet = wb_to_use.sheets['05-2022']
@@ -148,7 +147,7 @@ def paste_data():
 
     # Update the log widget
     log_text.insert(tk.END, "Data pasted successfully.\n")
-
+    wb_to_use.save()
     print("Data pasted successfully.")
 
 # Create the GUI

@@ -81,7 +81,9 @@ def fetch_data():
 
     print(df)
 
+    # Make the paste data and check for new instruments buttons available
     paste_button.config(state=tk.NORMAL)
+    update_new_button.config(state=tk.NORMAL)
 
 def calculate_summary():
     global dataframe
@@ -132,16 +134,16 @@ def paste_data():
     global dataframe
     global wb_to_use
 
-    # Get the "ALL CP" sheet from the workbook
-    cp_sheet = wb_to_use.sheets["DataExtraction"]
+    # Get the "DataExtraction" sheet from the workbook
+    extraction_sheet = wb_to_use.sheets["DataExtraction"]
 
     # Find the last row with data in column A and clear the content from the sheet
-    last_row_cp = cp_sheet.range("A2:C" + str(cp_sheet.cells.last_cell.row))
+    last_row_cp = extraction_sheet.range("A2:C" + str(extraction_sheet.cells.last_cell.row))
     last_row_cp.clear_contents()
 
     # Determine range where data should be pasted, running from A2 to column C with the rows being determined
     # by the amount of rows in the dataframe
-    dest_range = cp_sheet.range("A2:C{}".format(len(dataframe) + 1))
+    dest_range = extraction_sheet.range("A2:C{}".format(len(dataframe) + 1))
 
     dest_range.value = dataframe[["ACCT NO.", "sch A acc","CONV  AMT"]].values
 
@@ -149,6 +151,29 @@ def paste_data():
     log_text.insert(tk.END, "Data pasted successfully.\n")
     wb_to_use.save()
     print("Data pasted successfully.")
+
+def check_new():
+    global wb_to_use
+    global dataframe
+
+    # Get the "ALL CP" sheet
+    cp_sheet = wb_to_use.sheets("ALL CP")
+
+    # create new_instruments list
+    new_instruments = []
+
+    # Check the "ALL CP" sheet for the existing intruments
+    existing_instr_range = cp_sheet.range("B2:B" + str(cp_sheet.range("A" + str(cp_sheet.cells.last_cell.row)).end("up").row))
+
+    existing_instruments = existing_instr_range.value
+
+    # Check for any new instruments comparing the existing instruments listed in the "ALL CP" sheet
+    # comparing it with the instruments in the dataframe
+    for index, row in dataframe.iterrows():
+        acct_no = str(row["ACCT NO."])
+        if acct_no not in map(str,existing_instruments):
+            new_instruments.append(row)
+
 
 # Create the GUI
 root = tk.Tk()
@@ -172,6 +197,9 @@ fetch_button.pack()
 # Button to paste data
 paste_button = Button(root, text="Paste Data in ALL CP tab", command=paste_data, state=tk.DISABLED)
 paste_button.pack()
+
+update_new_button = Button(root, text="Check for new instruments", command=check_new, state=tk.DISABLED)
+update_new_button.pack()
 
 # Log widget
 log_text = Text(root, height=5)

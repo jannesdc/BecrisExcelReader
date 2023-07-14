@@ -1,8 +1,12 @@
-import os
 import xlwings as xw
 import pandas as pd
 import tkinter as tk
 from tkinter import filedialog, Text, Button
+
+global dataframe
+global wb_to_use
+dataframe = None
+wb_to_use = None
 
 def select_file():
     # Open a file selection dialog
@@ -13,6 +17,8 @@ def select_file():
 
 
 def fetch_data():
+    global dataframe
+    global wb_to_use
     # Get the selected file path
     file_path = file_entry.get()
 
@@ -49,20 +55,48 @@ def fetch_data():
 
     # Iterate over the data rows and filter
     for row in data:
-        if str(row[columns.index("sch A acc")]).startswith(('11', '12')) and row[columns.index("ACCT NO.")] != {None,0} and str(row[columns.index("CN")]) != {None,"ALL"}:
+        acct_no = row[columns.index("ACCT NO.")]
+        sch_a_code = row[columns.index("sch A acc")]
+        cn = str(row[columns.index("CN")])
+
+        if acct_no and sch_a_code and cn != "ALL" \
+                and str(sch_a_code).startswith(("11", "12")):
             filtered_data.append(row)
 
     # Create a DataFrame from the filtered data
     df = pd.DataFrame(filtered_data, columns=columns)
+    dataframe = df
 
     # Convert the values in the 'sch A acc' column to strings
     df['sch A acc'] = df['sch A acc'].astype(str)
 
     # Display the data in the GUI
+
     data_text.delete("1.0", "end")
     data_text.insert("1.0", df.to_string())
 
     print(df)
+
+    paste_button.config(state=tk.NORMAL)
+
+def paste_data():
+    global dataframe
+    global wb_to_use
+
+    # Get the "ALL CP" sheet from the workbook
+    cp_sheet = wb_to_use.sheets["DataExtraction"]
+
+    # Find the last row with data in column A
+    last_row_cp = cp_sheet.range("A2:C" + str(cp_sheet.cells.last_cell.row))
+    last_row_cp.clear_contents()
+
+    # Determine range where data should be pasted, running from A2 to column C with the rows being determined
+    # by the amount of rows in the dataframe
+    dest_range = cp_sheet.range("A2:C{}".format(len(dataframe) + 1))
+
+    dest_range.value = dataframe[["ACCT NO.", "sch A acc","CONV  AMT"]].values
+
+    print("Data pasted successfully.")
 
 # Create the GUI
 root = tk.Tk()
@@ -81,6 +115,10 @@ data_text.pack()
 # Button to fetch data
 fetch_button = Button(root, text="Fetch Data", command=fetch_data)
 fetch_button.pack()
+
+#Button to paste data
+paste_button = Button(root, text="Paste Data in ALL CP tab", command=paste_data, state=tk.DISABLED)
+paste_button.pack()
 
 # Run the GUI
 root.mainloop()

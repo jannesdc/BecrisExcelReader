@@ -2,7 +2,6 @@ import xlwings as xw
 import pandas as pd
 import tkinter as tk
 from tkinter import filedialog, Text, Button
-import tabulate
 
 global dataframe
 global wb_to_use
@@ -15,6 +14,7 @@ def select_file():
                                                filetypes=(("Excel Files", "*.xlsx"), ("All Files", "*.*")))
     file_entry.insert(tk.END, root.filename)
     print(root.filename)
+    fetch_button.config(state=tk.NORMAL)
 
 
 def fetch_data():
@@ -153,12 +153,13 @@ def paste_data():
 
 # Create the GUI
 root = tk.Tk()
+root.title("Data Handler")
 
 # File selection button and entry
 select_button = Button(root, text="Select File", command=select_file)
 select_button.pack()
 
-file_entry = tk.Entry(root)
+file_entry = tk.Entry(root, width=50)
 file_entry.pack()
 
 # Text widget for displaying data
@@ -166,7 +167,7 @@ data_text = Text(root, width=80,height=20)
 data_text.pack()
 
 # Button to fetch data
-fetch_button = Button(root, text="Fetch Data", command=fetch_data)
+fetch_button = Button(root, text="Fetch Data", command=fetch_data, state=tk.DISABLED)
 fetch_button.pack()
 
 # Button to paste data

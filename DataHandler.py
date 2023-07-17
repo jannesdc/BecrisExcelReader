@@ -227,7 +227,8 @@ def check_new():
         else:
             log_text.insert(tk.END, "No new instruments found.\n")
         log_text.insert(tk.END, "New instruments checked successfully.\n")
-        print(new_instruments)
+        for instrument in new_instruments:
+            print(instrument[3])
     except Exception as e:
         log_text.insert(tk.END, f"Error: {str(e)}\n")
 

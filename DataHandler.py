@@ -1,5 +1,6 @@
 import xlwings as xw
 import pandas as pd
+import numpy as np
 import tkinter as tk
 from tkinter import filedialog, Text, Button
 
@@ -151,14 +152,35 @@ def paste_data():
         extraction_sheet = wb_to_use.sheets["DataExtraction"]
 
         # Find the last row with data in column A and clear the content from the sheet
-        last_row_cp = extraction_sheet.range("A2:C" + str(extraction_sheet.cells.last_cell.row))
+        last_row_cp = extraction_sheet.range("A2:G" + str(extraction_sheet.cells.last_cell.row))
         last_row_cp.clear_contents()
 
         # Determine range where data should be pasted, running from A2 to column C with the rows being determined
         # by the amount of rows in the dataframe
-        dest_range = extraction_sheet.range("A2:C{}".format(len(dataframe) + 1))
+        dest_range = extraction_sheet.range("A2:E{}".format(len(dataframe) + 1))
+        mat_date_range = extraction_sheet.range("G2:G{}".format(len(dataframe) + 1))
+        interest_rate_type_range = extraction_sheet.range("F2:F{}".format(len(dataframe) + 1))
 
-        dest_range.value = dataframe[["ACCT NO.", "sch A acc","CONV  AMT"]].values
+        dest_range.value = dataframe[["ACCT NO.", "sch A acc", "CONV  AMT", "AMT", "CUR"]].values
+
+        # Get the values from the dataframe
+        mat_date_values = dataframe["MAT DT"].values
+        interest_type_values = dataframe["FLOATING/ FIXED"].values
+
+        # Create a new 2D array with a single column for leg fin mat date values
+        mat_date_values_array = [[value] if not (pd.isna(value) or np.isnat(value)) else ["NotApplicable"] for value
+                                   in mat_date_values]
+        interest_type_values_array = []
+        for value in interest_type_values:
+            if value:
+                interest_type_values_array.append([value])
+            else:
+                interest_type_values_array.append(["NotApplicable"])
+
+
+        # Insert the leg fin mat date values into the range
+        mat_date_range.value = mat_date_values_array
+        interest_rate_type_range.value = interest_type_values_array
 
         # Update the log widget
         log_text.insert(tk.END, "Data pasted successfully.\n")

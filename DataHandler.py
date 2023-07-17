@@ -39,7 +39,7 @@ def fetch_data():
 
         # If the file is not open, open it
         if not is_file_open:
-            wb_to_use = xw.Book(file_path)
+            wb_to_use = xw.Book(file_path, update_links=False)
 
         # Get the "05-2022" sheet of the workbook
         source_sheet = wb_to_use.sheets['CurrentMonth']
@@ -235,7 +235,7 @@ root = tk.Tk()
 root.title("Data Handler")
 
 # File selection button and entry
-select_button = Button(root, text="Select File", command=select_file)
+select_button = Button(root, text="Select file", command=select_file)
 select_button.pack()
 
 file_entry = tk.Entry(root, width=50)
@@ -246,11 +246,11 @@ data_text = Text(root, width=80, height=20)
 data_text.pack()
 
 # Button to fetch data
-fetch_button = Button(root, text="Fetch Data", command=fetch_data, state=tk.DISABLED)
+fetch_button = Button(root, text="Fetch data", command=fetch_data, state=tk.DISABLED)
 fetch_button.pack()
 
 # Button to paste data
-paste_button = Button(root, text="Paste Data in ""DataExtraction"" tab", command=paste_data, state=tk.DISABLED)
+paste_button = Button(root, text="Paste data in ""DataExtraction"" tab", command=paste_data, state=tk.DISABLED)
 paste_button.pack()
 
 update_new_button = Button(root, text="Check for new instruments", command=check_new, state=tk.DISABLED)

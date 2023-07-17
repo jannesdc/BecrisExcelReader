@@ -217,6 +217,7 @@ def check_new():
                     cp_sheet.range("G" + str(paste_row)).value = 1004
                 else:
                     cp_sheet.range("G" + str(paste_row)).value = "NOT FOUND"
+                    cp_sheet.range("G" + str(paste_row)).color = 6
 
 
 

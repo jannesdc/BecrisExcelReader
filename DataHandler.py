@@ -2,12 +2,12 @@ import xlwings as xw
 import pandas as pd
 import numpy as np
 import tkinter as tk
-from tkinter import filedialog, Text, Button
+import tkinter.ttk as ttk
+from tkinter import filedialog, Text, Button, Frame
 
-global dataframe
+
+global status_list_dataframe
 global wb_to_use
-dataframe = None
-wb_to_use = None
 
 
 def select_file():
@@ -23,8 +23,9 @@ def select_file():
 
 
 def fetch_data():
-    global dataframe
+    global status_list_dataframe
     global wb_to_use
+
     try:
         # Get the selected file path
         file_path = file_entry.get()
@@ -44,7 +45,7 @@ def fetch_data():
         if not is_file_open:
             wb_to_use = xw.Book(file_path, update_links=False)
 
-        # Get the "05-2022" sheet of the workbook
+        # Get the "CurrentMonth" sheet of the workbook
         source_sheet = wb_to_use.sheets['CurrentMonth']
 
         # Find the last row with data in column A of the source sheet
@@ -72,7 +73,7 @@ def fetch_data():
 
         # Create a DataFrame from the filtered data
         df = pd.DataFrame(filtered_data, columns=columns)
-        dataframe = df
+        status_list_dataframe = df
 
         # Convert the values in the 'sch A acc' column to strings
         df['sch A acc'] = df['sch A acc'].astype(str)
@@ -91,19 +92,21 @@ def fetch_data():
         # Make the paste data and check for new instruments buttons available
         paste_button.config(state=tk.NORMAL)
         update_new_button.config(state=tk.NORMAL)
+        validate_button.config(state=tk.NORMAL)
+        update_progress_bar.stop()
     except Exception as e:
         log_text.insert(tk.END, f"Error: {str(e)}\n")
 
 
 def calculate_summary():
-    global dataframe
+    global status_list_dataframe
 
     try:
         # Calculate the number of rows
-        num_rows = len(dataframe)
+        num_rows = len(status_list_dataframe)
 
         # Calculate the sums of "CONV AMT" based on "sch A acc" code
-        sums_by_sch_a_code = dataframe.groupby("sch A acc")["CONV  AMT"].sum().reset_index()
+        sums_by_sch_a_code = status_list_dataframe.groupby("sch A acc")["CONV  AMT"].sum().reset_index()
 
         # Store the summary information
         summary_info = {
@@ -149,32 +152,35 @@ def display_summary(summary_info):
 
 
 def paste_data():
-    global dataframe
+    global status_list_dataframe
     global wb_to_use
+    global update_progress_bar
 
     try:
         # Get the "DataExtraction" sheet from the workbook
+        update_progress_bar.config(mode="indeterminate")
+        update_progress_bar.start()
         extraction_sheet = wb_to_use.sheets["DataExtraction"]
 
         # Find the last row with data in column A and clear the content from the sheet
         last_row_cp = extraction_sheet.range("A2:L" + str(extraction_sheet.cells.last_cell.row))
         last_row_cp.clear_contents()
 
-        dest_range = extraction_sheet.range("A2:G{}".format(len(dataframe) + 1))
-        interest_rate_type_range = extraction_sheet.range("H2:H{}".format(len(dataframe) + 1))
-        mat_date_range = extraction_sheet.range("I2:I{}".format(len(dataframe) + 1))
-        interest_rate_range = extraction_sheet.range("J2:J{}".format(len(dataframe) + 1))
-        interest_reset_date_range = extraction_sheet.range("K2:K{}".format(len(dataframe) + 1))
-        undrawn_range = extraction_sheet.range("L2:L{}".format(len(dataframe) + 1))
+        dest_range = extraction_sheet.range("A2:G{}".format(len(status_list_dataframe) + 1))
+        interest_rate_type_range = extraction_sheet.range("H2:H{}".format(len(status_list_dataframe) + 1))
+        mat_date_range = extraction_sheet.range("I2:I{}".format(len(status_list_dataframe) + 1))
+        interest_rate_range = extraction_sheet.range("J2:J{}".format(len(status_list_dataframe) + 1))
+        interest_reset_date_range = extraction_sheet.range("K2:K{}".format(len(status_list_dataframe) + 1))
+        undrawn_range = extraction_sheet.range("L2:L{}".format(len(status_list_dataframe) + 1))
 
-        dest_range.value = dataframe[["ACCT NO.", "sch A acc", "CONV  AMT", "CON RT", "AMT", "ACCD INTT", "CUR"]].values
+        dest_range.value = status_list_dataframe[["ACCT NO.", "sch A acc", "CONV  AMT", "CON RT", "AMT", "ACCD INTT", "CUR"]].values
 
         # Get the values from the dataframe
-        mat_date_values = dataframe["MAT DT"].values
-        interest_type_values = dataframe["FLOATING/ FIXED"].values
-        interest_rate_values = dataframe["ROI"].values
-        interest_reset_date_values = dataframe["LAST RESET"].values
-        undrawn_values = dataframe["UNDRAWN"].values
+        mat_date_values = status_list_dataframe["MAT DT"].values
+        interest_type_values = status_list_dataframe["FLOATING/ FIXED"].values
+        interest_rate_values = status_list_dataframe["ROI"].values
+        interest_reset_date_values = status_list_dataframe["LAST RESET"].values
+        undrawn_values = status_list_dataframe["UNDRAWN"].values
 
         # Prepare the values for insertion
         mat_date_values_array = [[value if not (pd.isna(value) or np.isnat(value)) else "NotApplicable"] for value in
@@ -182,7 +188,7 @@ def paste_data():
         interest_type_values_array = [[value] if value else ["NotApplicable"] for value in interest_type_values]
         interest_rate_array = []
         undrawn_array = []
-        for value, cif_value in zip(interest_rate_values, dataframe["CIF"]):
+        for value, cif_value in zip(interest_rate_values, status_list_dataframe["CIF"]):
             if cif_value == 'Office Account':
                 interest_rate_array.append(["NotApplicable"])
             elif value:
@@ -190,7 +196,7 @@ def paste_data():
             else:
                 interest_rate_array.append([""])
         interest_reset_date_array = [[value] if value else ["NotApplicable"] for value in interest_reset_date_values]
-        for value, cif_value in zip(undrawn_values, dataframe["CIF"]):
+        for value, cif_value in zip(undrawn_values, status_list_dataframe["CIF"]):
             if cif_value == "Office Account":
                 undrawn_array.append(["NotApplicable"])
             elif value:
@@ -206,16 +212,20 @@ def paste_data():
         undrawn_range.value = undrawn_array
 
         # Update the log widget
+        update_progress_bar.stop()
+        update_progress_bar.config(mode="determinate")
         log_text.insert(tk.END, "Data pasted successfully.\n")
         wb_to_use.save()
         print("Data pasted successfully.")
+
     except Exception as e:
         log_text.insert(tk.END, f"Error: {str(e)}\n")
 
 
 def check_new():
     global wb_to_use
-    global dataframe
+    global status_list_dataframe
+    global update_progress_bar
 
     try:
         # Get the "ALL CP" sheet
@@ -229,12 +239,18 @@ def check_new():
             "B2:B" + str(cp_sheet.range("A" + str(cp_sheet.cells.last_cell.row)).end("up").row))
         existing_instruments = existing_instr_range.value
 
+
         # Check for any new instruments comparing the existing instruments listed in the "ALL CP" sheet
         # comparing it with the instruments in the dataframe
-        for index, row in dataframe.iterrows():
+        for index, row in status_list_dataframe.iterrows():
             acct_no = str(row["ACCT NO."])
             if acct_no not in map(str, existing_instruments):
                 new_instruments.append(row)
+
+        # Start the progress bar
+        total_iterations = len(new_instruments)*2
+        update_progress_bar.config(maximum=total_iterations)
+        update_progress_bar.start()
 
         # Paste the new instruments data at the end of the existing list in the "ALL CP" sheet
         if new_instruments:
@@ -250,11 +266,15 @@ def check_new():
                 # Calculate the row index for pasting
                 paste_row = paste_range.row + i
 
+                # Update progress bar
+                update_progress_bar.step()
+                root.update()
+
                 # Paste the data in the respective columns
                 cp_sheet.range("A" + str(paste_row)).value = "New"
                 cp_sheet.range("B" + str(paste_row)).value = instrument[2]
                 cp_sheet.range("C" + str(paste_row)).value = instrument[3]
-                cp_sheet.range("E" + str(paste_row)).value = instrument[5]
+                cp_sheet.range("E" + str(paste_row)).value = -instrument[5]
                 cp_sheet.range("F" + str(paste_row)).value = instrument[23]
                 if int(instrument[12]) == 18:
                     cp_sheet.range("G" + str(paste_row)).value = 20
@@ -265,6 +285,9 @@ def check_new():
                 else:
                     cp_sheet.range("G" + str(paste_row)).value = "NOT FOUND"
                     cp_sheet.range("G" + str(paste_row)).color = 6
+
+        # Stop the progress bar
+        update_progress_bar.stop()
 
         # Update the log widget
         if new_instruments:
@@ -277,32 +300,93 @@ def check_new():
     except Exception as e:
         log_text.insert(tk.END, f"Error: {str(e)}\n")
 
+def validate_data():
+    """
+    Checks per column of the "Data" tab the if the data is possible
+    :return:
+    """
+    global status_list_dataframe
+    global wb_to_use
+    becris_dataframe = None
+
+    # First we fill the becris and counterparty dataframes,
+    # so they can be used later for validation.
+    counterparty_sheet = wb_to_use.sheets['Counterparties references']
+    becris_sheet = wb_to_use.sheets['Data']
+
+    # Populating the counterparty dataframe
+    counterparty_last_row = counterparty_sheet.range("A" + str(counterparty_sheet.cells.last_cell.row)).end("up").row
+    counterparty_header_range = counterparty_sheet.range("A1").expand("right")
+    counterparty_data_range = counterparty_sheet.range("A2").expand("down").resize(counterparty_last_row - 1, counterparty_header_range.columns.count)
+
+    counterparty_columns = counterparty_header_range.value
+    counterparty_data = counterparty_data_range.value
+
+    counterparty_dataframe = pd.DataFrame(counterparty_data, columns=counterparty_columns)
+
+    # Populating the becris dataframe
+    becris_last_row = becris_sheet.range("A" + str(becris_sheet.cells.last_cell.row)).end("up").row
+    becris_header_range = becris_sheet.range("A1").expand("right")
+    becris_data_range = becris_sheet.range("A2").expand("down").resize(becris_last_row - 1, becris_header_range.columns.count)
+
+    becris_columns = becris_header_range.value
+    becris_data = becris_data_range.value
+
+    becris_dataframe = pd.DataFrame(becris_data, columns=becris_columns)
+
+    # Clear and update the data_text box
+    data_text.delete("1.0", tk.END)
+    data_text.insert("1.0", "Becris and Counterparty data summary:\n\n")
+    counterparty_summary = counterparty_dataframe.describe(include="all")
+    becris_summary = becris_dataframe.describe(include="all")
+    data_text.insert(tk.END, "Counterparty data summary:\n")
+    data_text.insert(tk.END, counterparty_summary.to_string() + "\n\n")
+    data_text.insert(tk.END, "Becris data summary:\n")
+    data_text.insert(tk.END, becris_summary.to_string())
 
 # Create the GUI
 root = tk.Tk()
 root.title("Data Handler")
 
-# File selection button and entry
-select_button = Button(root, text="Select file", command=select_file)
-select_button.pack()
+# Create top frame
+top_frame = Frame(root)
+top_frame.pack(side=tk.TOP)
 
-file_entry = tk.Entry(root, width=50)
-file_entry.pack()
+# File selection button and entry
+select_button = Button(top_frame, text="Select file", command=select_file)
+select_button.grid(row=1, column=0, padx=(0, 10))  # Add some padding on the right
+
+file_entry = tk.Entry(top_frame, width=90)
+file_entry.grid(row=1, column=1)  # Place the entry next to the button
 
 # Text widget for displaying data
 data_text = Text(root, width=80, height=20)
 data_text.pack()
 
+# Progress bar
+update_progress_bar = ttk.Progressbar(root, mode="determinate",length=400)
+update_progress_bar.pack()
+update_progress_bar.stop()
+
 # Button to fetch data
 fetch_button = Button(root, text="Fetch data", command=fetch_data, state=tk.DISABLED)
 fetch_button.pack()
 
-# Button to paste data
-paste_button = Button(root, text="Paste data in ""DataExtraction"" tab", command=paste_data, state=tk.DISABLED)
-paste_button.pack()
+# Frame to hold the buttons
+button_frame = Frame(root)
+button_frame.pack()
 
-update_new_button = Button(root, text="Check for new instruments", command=check_new, state=tk.DISABLED)
-update_new_button.pack()
+# Button to check for new instruments
+update_new_button = Button(button_frame, text="Check for new instruments", command=check_new, state=tk.DISABLED)
+update_new_button.pack(side=tk.LEFT, padx=5)
+
+# Button to paste data
+paste_button = Button(button_frame, text="Paste data in ""DataExtraction"" tab", command=paste_data, state=tk.DISABLED)
+paste_button.pack(side=tk.LEFT)
+
+# Button to validate data
+validate_button = Button(button_frame, text="Validate Becris Data", command=validate_data, state=tk.DISABLED)
+validate_button.pack(side=tk.LEFT, padx=5)
 
 # Log widget
 log_text = Text(root, height=5)
@@ -310,3 +394,6 @@ log_text.pack()
 
 # Run the GUI
 root.mainloop()
+
+
+

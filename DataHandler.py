@@ -9,6 +9,7 @@ global wb_to_use
 dataframe = None
 wb_to_use = None
 
+
 def select_file():
     try:
         # Open a file selection dialog
@@ -19,6 +20,7 @@ def select_file():
         fetch_button.config(state=tk.NORMAL)
     except Exception as e:
         log_text.insert(tk.END, f"Error: {str(e)}\n")
+
 
 def fetch_data():
     global dataframe
@@ -92,6 +94,7 @@ def fetch_data():
     except Exception as e:
         log_text.insert(tk.END, f"Error: {str(e)}\n")
 
+
 def calculate_summary():
     global dataframe
 
@@ -111,6 +114,7 @@ def calculate_summary():
         return summary_info
     except Exception as e:
         log_text.insert(tk.END, f"Error: {str(e)}\n")
+
 
 def display_summary(summary_info):
     try:
@@ -143,6 +147,7 @@ def display_summary(summary_info):
     except Exception as e:
         log_text.insert(tk.END, f"Error: {str(e)}\n")
 
+
 def paste_data():
     global dataframe
     global wb_to_use
@@ -152,35 +157,53 @@ def paste_data():
         extraction_sheet = wb_to_use.sheets["DataExtraction"]
 
         # Find the last row with data in column A and clear the content from the sheet
-        last_row_cp = extraction_sheet.range("A2:G" + str(extraction_sheet.cells.last_cell.row))
+        last_row_cp = extraction_sheet.range("A2:L" + str(extraction_sheet.cells.last_cell.row))
         last_row_cp.clear_contents()
 
-        # Determine range where data should be pasted, running from A2 to column C with the rows being determined
-        # by the amount of rows in the dataframe
-        dest_range = extraction_sheet.range("A2:E{}".format(len(dataframe) + 1))
-        mat_date_range = extraction_sheet.range("G2:G{}".format(len(dataframe) + 1))
-        interest_rate_type_range = extraction_sheet.range("F2:F{}".format(len(dataframe) + 1))
+        dest_range = extraction_sheet.range("A2:G{}".format(len(dataframe) + 1))
+        interest_rate_type_range = extraction_sheet.range("H2:H{}".format(len(dataframe) + 1))
+        mat_date_range = extraction_sheet.range("I2:I{}".format(len(dataframe) + 1))
+        interest_rate_range = extraction_sheet.range("J2:J{}".format(len(dataframe) + 1))
+        interest_reset_date_range = extraction_sheet.range("K2:K{}".format(len(dataframe) + 1))
+        undrawn_range = extraction_sheet.range("L2:L{}".format(len(dataframe) + 1))
 
-        dest_range.value = dataframe[["ACCT NO.", "sch A acc", "CONV  AMT", "AMT", "CUR"]].values
+        dest_range.value = dataframe[["ACCT NO.", "sch A acc", "CONV  AMT", "CON RT", "AMT", "ACCD INTT", "CUR"]].values
 
         # Get the values from the dataframe
         mat_date_values = dataframe["MAT DT"].values
         interest_type_values = dataframe["FLOATING/ FIXED"].values
+        interest_rate_values = dataframe["ROI"].values
+        interest_reset_date_values = dataframe["LAST RESET"].values
+        undrawn_values = dataframe["UNDRAWN"].values
 
-        # Create a new 2D array with a single column for leg fin mat date values
-        mat_date_values_array = [[value] if not (pd.isna(value) or np.isnat(value)) else ["NotApplicable"] for value
-                                   in mat_date_values]
-        interest_type_values_array = []
-        for value in interest_type_values:
-            if value:
-                interest_type_values_array.append([value])
+        # Prepare the values for insertion
+        mat_date_values_array = [[value if not (pd.isna(value) or np.isnat(value)) else "NotApplicable"] for value in
+                                 mat_date_values]
+        interest_type_values_array = [[value] if value else ["NotApplicable"] for value in interest_type_values]
+        interest_rate_array = []
+        undrawn_array = []
+        for value, cif_value in zip(interest_rate_values, dataframe["CIF"]):
+            if cif_value == 'Office Account':
+                interest_rate_array.append(["NotApplicable"])
+            elif value:
+                interest_rate_array.append([abs(value / 100)])
             else:
-                interest_type_values_array.append(["NotApplicable"])
+                interest_rate_array.append([""])
+        interest_reset_date_array = [[value] if value else ["NotApplicable"] for value in interest_reset_date_values]
+        for value, cif_value in zip(undrawn_values, dataframe["CIF"]):
+            if cif_value == "Office Account":
+                undrawn_array.append(["NotApplicable"])
+            elif value:
+                undrawn_array.append([abs(value)])
+            else:
+                undrawn_array.append([0])
 
-
-        # Insert the leg fin mat date values into the range
+        # Insert the values into the range
         mat_date_range.value = mat_date_values_array
         interest_rate_type_range.value = interest_type_values_array
+        interest_rate_range.value = interest_rate_array
+        interest_reset_date_range.value = interest_reset_date_array
+        undrawn_range.value = undrawn_array
 
         # Update the log widget
         log_text.insert(tk.END, "Data pasted successfully.\n")
@@ -188,6 +211,7 @@ def paste_data():
         print("Data pasted successfully.")
     except Exception as e:
         log_text.insert(tk.END, f"Error: {str(e)}\n")
+
 
 def check_new():
     global wb_to_use
@@ -201,14 +225,15 @@ def check_new():
         new_instruments = []
 
         # Check the "ALL CP" sheet for the existing instruments
-        existing_instr_range = cp_sheet.range("B2:B" + str(cp_sheet.range("A" + str(cp_sheet.cells.last_cell.row)).end("up").row))
+        existing_instr_range = cp_sheet.range(
+            "B2:B" + str(cp_sheet.range("A" + str(cp_sheet.cells.last_cell.row)).end("up").row))
         existing_instruments = existing_instr_range.value
 
         # Check for any new instruments comparing the existing instruments listed in the "ALL CP" sheet
         # comparing it with the instruments in the dataframe
         for index, row in dataframe.iterrows():
             acct_no = str(row["ACCT NO."])
-            if acct_no not in map(str,existing_instruments):
+            if acct_no not in map(str, existing_instruments):
                 new_instruments.append(row)
 
         # Paste the new instruments data at the end of the existing list in the "ALL CP" sheet
@@ -235,13 +260,11 @@ def check_new():
                     cp_sheet.range("G" + str(paste_row)).value = 20
                 elif int(instrument[12]) == 12:
                     cp_sheet.range("G" + str(paste_row)).value = 1000
-                elif int(instrument[12]) in {20,21,22}:
+                elif int(instrument[12]) in {20, 21, 22}:
                     cp_sheet.range("G" + str(paste_row)).value = 1004
                 else:
                     cp_sheet.range("G" + str(paste_row)).value = "NOT FOUND"
                     cp_sheet.range("G" + str(paste_row)).color = 6
-
-
 
         # Update the log widget
         if new_instruments:
@@ -253,6 +276,7 @@ def check_new():
             print(instrument[3])
     except Exception as e:
         log_text.insert(tk.END, f"Error: {str(e)}\n")
+
 
 # Create the GUI
 root = tk.Tk()

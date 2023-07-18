@@ -8,6 +8,7 @@ from tkinter import filedialog, Text, Button, Frame
 
 global status_list_dataframe
 global wb_to_use
+wb_to_use = None
 
 
 def select_file():
@@ -93,7 +94,6 @@ def fetch_data():
         paste_button.config(state=tk.NORMAL)
         update_new_button.config(state=tk.NORMAL)
         validate_button.config(state=tk.NORMAL)
-        update_progress_bar.stop()
     except Exception as e:
         log_text.insert(tk.END, f"Error: {str(e)}\n")
 
@@ -307,7 +307,6 @@ def validate_data():
     """
     global status_list_dataframe
     global wb_to_use
-    becris_dataframe = None
 
     # First we fill the becris and counterparty dataframes,
     # so they can be used later for validation.
@@ -331,18 +330,56 @@ def validate_data():
 
     becris_columns = becris_header_range.value
     becris_data = becris_data_range.value
+    filtered_becris_data = []
+    for row in becris_data:
+        if row[0] is not None:
+            filtered_becris_data.append(row)
 
-    becris_dataframe = pd.DataFrame(becris_data, columns=becris_columns)
+    becris_dataframe = pd.DataFrame(filtered_becris_data, columns=becris_columns)
 
     # Clear and update the data_text box
     data_text.delete("1.0", tk.END)
     data_text.insert("1.0", "Becris and Counterparty data summary:\n\n")
-    counterparty_summary = counterparty_dataframe.describe(include="all")
-    becris_summary = becris_dataframe.describe(include="all")
-    data_text.insert(tk.END, "Counterparty data summary:\n")
-    data_text.insert(tk.END, counterparty_summary.to_string() + "\n\n")
-    data_text.insert(tk.END, "Becris data summary:\n")
-    data_text.insert(tk.END, becris_summary.to_string())
+    data_text.insert(tk.END, f"Counterparties found: {len(counterparty_dataframe)}\n")
+    data_text.insert(tk.END, f"Instruments found in becris data: {len(becris_dataframe)}\n\n")
+
+    def check_counterparty_identifier_uniqueness(counterparty_dataframe):
+        """
+        Checks if Counterparty identifiers (ENI, LEI, RACI) in the Counterparty reference dataset are unique.
+        :param counterparty_dataframe: The DataFrame containing the Counterparty reference data.
+        :return: A boolean indicating whether the identifiers are unique or not.
+        """
+
+        # Create a new DataFrame to store the validity check results
+        validity_result = pd.DataFrame(columns=["Identifier", "Duplicate Count"])
+
+        # Check ENI uniqueness, ignoring "NotRequired" values
+        eni_unique = (counterparty_dataframe["ENI"] != "NotRequired").duplicated(keep=False)
+        eni_duplicates = eni_unique.sum()
+        validity_result = validity_result.append({"Identifier": "ENI", "Duplicate Count": eni_duplicates},
+                                                 ignore_index=True)
+
+        # Check LEI uniqueness, ignoring "NotApplicable" values
+        lei_unique = (counterparty_dataframe["LEI"] != "NotApplicable").duplicated(keep=False)
+        lei_duplicates = lei_unique.sum()
+        validity_result = validity_result.append({"Identifier": "LEI", "Duplicate Count": lei_duplicates},
+                                                 ignore_index=True)
+
+        # Check RACI for empty values (should not be empty)
+        raci_empty = counterparty_dataframe["RACI"].isnull().sum()
+        validity_result = validity_result.append({"Identifier": "RACI (Empty Values)", "Duplicate Count": raci_empty},
+                                                 ignore_index=True)
+
+        # Display the validity check result in the data_text widget
+        data_text.insert(tk.END, "Counterparty Identifier Uniqueness Check:\n\n")
+        for idx, row in validity_result.iterrows():
+            identifier = row["Identifier"]
+            duplicate_count = row["Duplicate Count"]
+            data_text.insert(tk.END, f"{identifier} - Duplicate Count: {duplicate_count}\n")
+
+        # Return True if all identifiers are unique, otherwise False
+        return validity_result["Duplicate Count"].sum() == 0
+
 
 # Create the GUI
 root = tk.Tk()

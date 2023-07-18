@@ -5,7 +5,6 @@ import tkinter as tk
 import tkinter.ttk as ttk
 from tkinter import filedialog, Text, Button, Frame
 
-
 global status_list_dataframe
 global wb_to_use
 wb_to_use = None
@@ -173,7 +172,8 @@ def paste_data():
         interest_reset_date_range = extraction_sheet.range("K2:K{}".format(len(status_list_dataframe) + 1))
         undrawn_range = extraction_sheet.range("L2:L{}".format(len(status_list_dataframe) + 1))
 
-        dest_range.value = status_list_dataframe[["ACCT NO.", "sch A acc", "CONV  AMT", "CON RT", "AMT", "ACCD INTT", "CUR"]].values
+        dest_range.value = status_list_dataframe[
+            ["ACCT NO.", "sch A acc", "CONV  AMT", "CON RT", "AMT", "ACCD INTT", "CUR"]].values
 
         # Get the values from the dataframe
         mat_date_values = status_list_dataframe["MAT DT"].values
@@ -239,7 +239,6 @@ def check_new():
             "B2:B" + str(cp_sheet.range("A" + str(cp_sheet.cells.last_cell.row)).end("up").row))
         existing_instruments = existing_instr_range.value
 
-
         # Check for any new instruments comparing the existing instruments listed in the "ALL CP" sheet
         # comparing it with the instruments in the dataframe
         for index, row in status_list_dataframe.iterrows():
@@ -248,7 +247,7 @@ def check_new():
                 new_instruments.append(row)
 
         # Start the progress bar
-        total_iterations = len(new_instruments)*2
+        total_iterations = len(new_instruments) * 2
         update_progress_bar.config(maximum=total_iterations)
         update_progress_bar.start()
 
@@ -280,7 +279,9 @@ def check_new():
                     cp_sheet.range("G" + str(paste_row)).value = 20
                 elif int(instrument[12]) == 12:
                     cp_sheet.range("G" + str(paste_row)).value = 1000
-                elif int(instrument[12]) in {20, 21, 22}:
+                elif int(instrument[12]) == 22:
+                    cp_sheet.range("G" + str(paste_row)).value = 71
+                elif int(instrument[12]) in {20, 21}:
                     cp_sheet.range("G" + str(paste_row)).value = 1004
                 else:
                     cp_sheet.range("G" + str(paste_row)).value = "NOT FOUND"
@@ -295,10 +296,9 @@ def check_new():
         else:
             log_text.insert(tk.END, "No new instruments found.\n")
         log_text.insert(tk.END, "New instruments checked successfully.\n")
-        for instrument in new_instruments:
-            print(instrument[3])
     except Exception as e:
         log_text.insert(tk.END, f"Error: {str(e)}\n")
+
 
 def validate_data():
     """
@@ -316,7 +316,8 @@ def validate_data():
     # Populating the counterparty dataframe
     counterparty_last_row = counterparty_sheet.range("A" + str(counterparty_sheet.cells.last_cell.row)).end("up").row
     counterparty_header_range = counterparty_sheet.range("A1").expand("right")
-    counterparty_data_range = counterparty_sheet.range("A2").expand("down").resize(counterparty_last_row - 1, counterparty_header_range.columns.count)
+    counterparty_data_range = counterparty_sheet.range("A2").expand("down").resize(counterparty_last_row - 1,
+                                                                                   counterparty_header_range.columns.count)
 
     counterparty_columns = counterparty_header_range.value
     counterparty_data = counterparty_data_range.value
@@ -326,7 +327,8 @@ def validate_data():
     # Populating the becris dataframe
     becris_last_row = becris_sheet.range("A" + str(becris_sheet.cells.last_cell.row)).end("up").row
     becris_header_range = becris_sheet.range("A1").expand("right")
-    becris_data_range = becris_sheet.range("A2").expand("down").resize(becris_last_row - 1, becris_header_range.columns.count)
+    becris_data_range = becris_sheet.range("A2").expand("down").resize(becris_last_row - 1,
+                                                                       becris_header_range.columns.count)
 
     becris_columns = becris_header_range.value
     becris_data = becris_data_range.value
@@ -351,34 +353,103 @@ def validate_data():
         """
 
         # Create a new DataFrame to store the validity check results
-        validity_result = pd.DataFrame(columns=["Identifier", "Duplicate Count"])
+        columns = ["Identifier", "Duplicate Count"]
+        validity_result = []
 
         # Check ENI uniqueness, ignoring "NotRequired" values
-        eni_unique = (counterparty_dataframe["ENI"] != "NotRequired").duplicated(keep=False)
+        eni_unique = (counterparty_dataframe["ENI"] != "NotRequired") \
+                     & counterparty_dataframe.duplicated(subset=["ENI"], keep=False)
         eni_duplicates = eni_unique.sum()
-        validity_result = validity_result.append({"Identifier": "ENI", "Duplicate Count": eni_duplicates},
-                                                 ignore_index=True)
+        validity_result.append(["ENI", eni_duplicates])
 
         # Check LEI uniqueness, ignoring "NotApplicable" values
-        lei_unique = (counterparty_dataframe["LEI"] != "NotApplicable").duplicated(keep=False)
+        lei_unique = (counterparty_dataframe["LEI"] != "NotApplicable") \
+                     & counterparty_dataframe.duplicated(subset=["LEI"], keep=False)
         lei_duplicates = lei_unique.sum()
-        validity_result = validity_result.append({"Identifier": "LEI", "Duplicate Count": lei_duplicates},
-                                                 ignore_index=True)
+        validity_result.append(["LEI", lei_duplicates])
 
         # Check RACI for empty values (should not be empty)
+        raci_unique = counterparty_dataframe.duplicated(subset=["RACI"], keep=False)
+        raci_duplicates = raci_unique.sum()
         raci_empty = counterparty_dataframe["RACI"].isnull().sum()
-        validity_result = validity_result.append({"Identifier": "RACI (Empty Values)", "Duplicate Count": raci_empty},
-                                                 ignore_index=True)
+        validity_result.append(["RACI", raci_duplicates])
 
-        # Display the validity check result in the data_text widget
-        data_text.insert(tk.END, "Counterparty Identifier Uniqueness Check:\n\n")
-        for idx, row in validity_result.iterrows():
-            identifier = row["Identifier"]
-            duplicate_count = row["Duplicate Count"]
-            data_text.insert(tk.END, f"{identifier} - Duplicate Count: {duplicate_count}\n")
+        validity_result_df = pd.DataFrame(validity_result, columns=columns)
+        is_unique = pd.to_numeric(validity_result_df["Duplicate Count"], errors="coerce").sum() == 0
+
+        if is_unique and raci_empty == 0:
+            data_text.insert(tk.END, "Counterparty identifiers are UNIQUE.\n")
+        else:
+            data_text.insert(tk.END, "Counterparty identifiers are NOT CORRECT.\n")
+            if not is_unique and raci_empty == 0:
+                for idx, row in validity_result_df.iterrows():
+                    identifier = row["Identifier"]
+                    duplicate_count = row["Duplicate Count"]
+                    data_text.insert(tk.END, f"{identifier} - Duplicate Count: {duplicate_count}\n")
+            elif raci_empty != 0 and is_unique:
+                data_text.insert(tk.END, f"RACI - Missing RACI values: {raci_empty}\n")
+            else:
+                for idx, row in validity_result_df.iterrows():
+                    identifier = row["Identifier"]
+                    duplicate_count = row["Duplicate Count"]
+                    data_text.insert(tk.END, f"{identifier} - Duplicate Count: {duplicate_count}\n")
+                data_text.insert(tk.END, f"There are {raci_empty} missing RACI values.\n")
 
         # Return True if all identifiers are unique, otherwise False
-        return validity_result["Duplicate Count"].sum() == 0
+        return pd.to_numeric(validity_result_df["Duplicate Count"], errors="coerce").sum() == 0 and raci_empty == 0
+
+    def check_accumulated_write_offs(becris_dataframe):
+        """
+        Checks the validity of the "Accumulated write-offs" column in the becris_dataframe.
+        :param becris_dataframe: The DataFrame containing the becris data.
+        :return: A boolean indicating whether the "Accumulated write-offs" column is valid or not.
+        """
+        # Create a new DataFrame to store the validity check results
+        columns = ["Check", "Result"]
+        validity_result = []
+
+        # Check 1: Check [Financial.Outstanding nominal amount] + [Accounting.Accumulated write-offs]
+        #                                                   >= [Financial.Arrears for the instrument]
+        condition_1_valid = True
+        if "NotRequired" not in becris_dataframe["Accumulated write-offs"].values:
+            condition_1_valid = (
+                    (pd.to_numeric(becris_dataframe["Outstanding nominal amount"]) +
+                     pd.to_numeric(becris_dataframe["Accumulated write-offs"]))
+                    >= pd.to_numeric(becris_dataframe["Arrears for the instrument"])
+            )
+        validity_result.append(["ER_DTS_CS_FIN_048", condition_1_valid])
+
+        # ADD MORE CHECKS HERE IF NEEDED
+
+        # Display the validity check result in the data_text widget
+        data_text.insert(tk.END, "Accumulated Write-Offs Check:\n")
+
+        if len(validity_result) == 1:
+            result = "Passed" if all(validity_result[0][1]) else "Failed"
+            data_text.insert(tk.END, f"{validity_result[0][0]} - Result: {result}\n")
+            all_passed = validity_result[0][0]
+        else:
+            all_passed = True  # Assume all checks pass initially
+            for idx, row in validity_result:
+                check = row["Check"]
+                result = "Passed" if row["Result"] else "Failed"
+                data_text.insert(tk.END, f"{check} - Result: {result}\n")
+                if not row["Result"]:  # If any check fails, set all_passed to False
+                    all_passed = False
+
+        if all_passed:
+            data_text.insert(tk.END, "All checks passed for the 'Accumulated write-offs' column.\n")
+        else:
+            data_text.insert(tk.END, "One or more checks failed for the 'Accumulated write-offs' column.\n")
+
+        # Return True if all checks passed, otherwise False
+        return all_passed
+
+    data_text.insert(tk.END, "Performing validity checks on counterparty references data...\n")
+    is_counterparty_unique = check_counterparty_identifier_uniqueness(counterparty_dataframe)
+
+    data_text.insert(tk.END, "\nPerforming validity checks on becris data...\n")
+    is_accumulated_write_offs_valid = check_accumulated_write_offs(becris_dataframe)
 
 
 # Create the GUI
@@ -401,7 +472,7 @@ data_text = Text(root, width=80, height=20)
 data_text.pack()
 
 # Progress bar
-update_progress_bar = ttk.Progressbar(root, mode="determinate",length=400)
+update_progress_bar = ttk.Progressbar(root, mode="determinate", length=400)
 update_progress_bar.pack()
 update_progress_bar.stop()
 
@@ -431,6 +502,3 @@ log_text.pack()
 
 # Run the GUI
 root.mainloop()
-
-
-

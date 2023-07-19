@@ -398,12 +398,7 @@ def validate_data():
         # Return True if all identifiers are unique, otherwise False
         return pd.to_numeric(validity_result_df["Duplicate Count"], errors="coerce").sum() == 0 and raci_empty == 0
 
-    def check_accumulated_write_offs(becris_dataframe):
-        """
-        Checks the validity of the "Accumulated write-offs" column in the becris_dataframe.
-        :param becris_dataframe: The DataFrame containing the becris data.
-        :return: A boolean indicating whether the "Accumulated write-offs" column is valid or not.
-        """
+    """def check_accumulated_write_offs(becris_dataframe):
         # Create a new DataFrame to store the validity check results
         columns = ["Check", "Result"]
         validity_result = []
@@ -419,7 +414,14 @@ def validate_data():
             )
         validity_result.append(["ER_DTS_CS_FIN_048", condition_1_valid])
 
-        # ADD MORE CHECKS HERE IF NEEDED
+        # Check 2: Accumulated write-offs should always be a number never anything else
+        try:
+            pd.to_numeric(becris_dataframe["Accumulated write-offs"])
+            condition_2_valid = True
+        except:
+            condition_2_valid = False
+
+        validity_result.append(["Accumulated write-offs should be numbers", condition_2_valid])
 
         # Display the validity check result in the data_text widget
         data_text.insert(tk.END, "Accumulated Write-Offs Check:\n")
@@ -427,15 +429,21 @@ def validate_data():
         if len(validity_result) == 1:
             result = "Passed" if all(validity_result[0][1]) else "Failed"
             data_text.insert(tk.END, f"{validity_result[0][0]} - Result: {result}\n")
-            all_passed = validity_result[0][0]
+            all_passed = all(validity_result[0][1])
         else:
             all_passed = True  # Assume all checks pass initially
-            for idx, row in validity_result:
-                check = row["Check"]
-                result = "Passed" if row["Result"] else "Failed"
+            for row in validity_result:
+                check = row[0]
+                if type(row[1]) is bool:
+                    result = "Passed" if row[1] else "Failed"
+                    if not row[1]:  # If any check fails, set all_passed to False
+                        all_passed = False
+                else:
+                    result = "Passed" if all(row[1]) else "Failed"
+                    if not all(row[1]):  # If any check fails, set all_passed to False
+                        all_passed = False
                 data_text.insert(tk.END, f"{check} - Result: {result}\n")
-                if not row["Result"]:  # If any check fails, set all_passed to False
-                    all_passed = False
+
 
         if all_passed:
             data_text.insert(tk.END, "All checks passed for the 'Accumulated write-offs' column.\n")
@@ -443,14 +451,14 @@ def validate_data():
             data_text.insert(tk.END, "One or more checks failed for the 'Accumulated write-offs' column.\n")
 
         # Return True if all checks passed, otherwise False
-        return all_passed
+        return all_passed"""
 
     data_text.insert(tk.END, "Performing validity checks on counterparty references data...\n")
     is_counterparty_unique = check_counterparty_identifier_uniqueness(counterparty_dataframe)
 
-    data_text.insert(tk.END, "\nPerforming validity checks on becris data...\n")
+""" data_text.insert(tk.END, "\nPerforming validity checks on becris data...\n")
     is_accumulated_write_offs_valid = check_accumulated_write_offs(becris_dataframe)
-
+"""
 
 # Create the GUI
 root = tk.Tk()

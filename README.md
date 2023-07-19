@@ -14,7 +14,7 @@ and visualize the validation results in a user-friendly graphical interface.
 
 ### Installation
 
-1. Download zip of the project at https://github.com/jannesdc/BecrisExcelReader/archive/refs/heads/master.zip
+1. Download zip of the project in [releases](https://github.com/jannesdc/BecrisExcelReader/releases/tag/v1.0)
 2. Unpack and run the DataHandler.exe file in the \dist\DataHandler directory
 
 ### Usage

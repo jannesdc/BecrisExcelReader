@@ -4,6 +4,8 @@ import numpy as np
 import tkinter as tk
 import tkinter.ttk as ttk
 from tkinter import filedialog, Text, Button, Frame
+import configparser
+import os
 
 global status_list_dataframe
 global wb_to_use
@@ -12,9 +14,27 @@ wb_to_use = None
 
 def select_file():
     try:
+        # Read config to remember last selected file directory
+        config = configparser.ConfigParser()
+        config.read("config.ini")
+        # Check if the config.ini file exists
+        if not os.path.exists("config.ini"):
+            # Create the config.ini file with default values if it doesn't exist
+            config['Settings'] = {'last_directory': '/'}
+            with open("config.ini", "w") as configfile:
+                config.write(configfile)
+        if 'Settings' not in config:
+            config['Settings'] = {'last_directory': '/'}
+        last_directory = config.get("Settings", "last_directory", fallback="/")
+
         # Open a file selection dialog
-        root.filename = filedialog.askopenfilename(initialdir="/", title="Select Excel File",
+        root.filename = filedialog.askopenfilename(initialdir=last_directory, title="Select Excel File",
                                                    filetypes=(("Excel Files", "*.xlsx"), ("All Files", "*.*")))
+
+        if root.filename:
+            config.set("Settings", "last_directory", "/".join(root.filename.split("/")[:-1]))
+            with open("config.ini", "w") as configfile:
+                config.write(configfile)
         file_entry.insert(tk.END, root.filename)
         print(root.filename)
         fetch_button.config(state=tk.NORMAL)
@@ -49,7 +69,7 @@ def fetch_data():
         source_sheet = wb_to_use.sheets['CurrentMonth']
 
         # Find the last row with data in column A of the source sheet
-        last_row = source_sheet.range("A" + str(source_sheet.cells.last_cell.row)).end("up").row
+        last_row = source_sheet.range("C" + str(source_sheet.cells.last_cell.row)).end("up").row
 
         # Read the data from the source sheet into a DataFrame
         header_range = source_sheet.range("A2:AK2")
@@ -69,9 +89,26 @@ def fetch_data():
 
             if acct_no and sch_a_code and cn != "ALL" \
                     and str(sch_a_code).startswith(("11", "12")):
+                row.append("On-balance")
+                filtered_data.append(row)
+
+            elif acct_no and sch_a_code and cn != "ALL" \
+                    and str(sch_a_code).startswith(("34321", "34311", "34220", "36300", "36400")):
+                first_five_numbers = str(sch_a_code)[:5]
+                if isinstance(acct_no, str):
+                    acct_no = str(acct_no)
+                elif isinstance(acct_no, float):
+                    acct_no = str(int(acct_no))
+                else:
+                    acct_no = str(row["ACCT NO."])
+                new_acct_no = f"{acct_no}_{first_five_numbers}"
+                row.append("Off-balance")
+                row.append(new_acct_no)
                 filtered_data.append(row)
 
         # Create a DataFrame from the filtered data
+        columns.append("Balance Type")
+        columns.append("Modified ACCT NO.")
         df = pd.DataFrame(filtered_data, columns=columns)
         status_list_dataframe = df
 
@@ -102,15 +139,24 @@ def calculate_summary():
 
     try:
         # Calculate the number of rows
-        num_rows = len(status_list_dataframe)
+        num_rows_onb = len(status_list_dataframe[status_list_dataframe["Balance Type"] == "On-balance"])
+        num_rows_ofb = len(status_list_dataframe[status_list_dataframe["Balance Type"] == "Off-balance"])
 
         # Calculate the sums of "CONV AMT" based on "sch A acc" code
-        sums_by_sch_a_code = status_list_dataframe.groupby("sch A acc")["CONV  AMT"].sum().reset_index()
+        sums_by_sch_a_code = status_list_dataframe[status_list_dataframe["Balance Type"] ==
+                                                   "On-balance"].groupby("sch A acc")["CONV  AMT"].sum().reset_index()
+        tot_sum_amt_ofb = status_list_dataframe[status_list_dataframe["Balance Type"] ==
+                                                   "Off-balance"].groupby("sch A acc")["AMT"].sum().reset_index()
+        tot_sum_conv_amt_ofb = status_list_dataframe[status_list_dataframe["Balance Type"] ==
+                                                   "Off-balance"].groupby("sch A acc")["CONV  AMT"].sum().reset_index()
 
         # Store the summary information
         summary_info = {
-            "Number of Rows": num_rows,
-            "Sums by sch A acc": sums_by_sch_a_code
+            "Number of Rows ONB": num_rows_onb,
+            "Number of Rows OFB": num_rows_ofb,
+            "Sums by sch A acc": sums_by_sch_a_code,
+            "Tot sum OFB": tot_sum_amt_ofb,
+            "Tot conv sum OFB": tot_sum_conv_amt_ofb
         }
 
         return summary_info
@@ -124,9 +170,9 @@ def display_summary(summary_info):
         data_text.delete("1.0", "end")
         data_text.insert("1.0", "Summary Information:\n\n")
 
-        # Display the number of rows
-        num_rows = summary_info["Number of Rows"]
-        data_text.insert(tk.END, f"Number of Rows: {num_rows}\n\n")
+        # Display the number of on balance rows
+        num_rows_onb = summary_info["Number of Rows ONB"]
+        data_text.insert(tk.END, f"Number of On-balance Rows: {num_rows_onb}\n\n")
 
         # Display the sums by sch A acc
         sums_by_sch_a_acc = summary_info["Sums by sch A acc"]
@@ -143,9 +189,21 @@ def display_summary(summary_info):
             conv_amt_sum_2 = abs(group_data_2["CONV  AMT"].sum())
             data_text.insert(tk.END, f"Group: {group_2}\tCONV AMT: {conv_amt_sum_2:,.2f}\n")
 
-        # Display the sum of all data
+        # Display the sum of all on balance data
         conv_amt_sum_total = abs(sums_by_sch_a_acc["CONV  AMT"].sum())
         data_text.insert(tk.END, f"\nTotal CONV AMT: {conv_amt_sum_total:,.2f}\n")
+
+        # Display the number of off balance rows
+        num_rows_ofb = summary_info["Number of Rows OFB"]
+        data_text.insert(tk.END, f"\nNumber of Off-balance Rows: {num_rows_ofb}\n\n")
+
+        # Display the sum of all off balance data
+        tot_sum_ofb = summary_info["Tot sum OFB"]
+        amt_sum_total = abs(tot_sum_ofb["AMT"].sum())
+        data_text.insert(tk.END, f"Total AMT: {amt_sum_total:,.2f}\n")
+        tot_sum_conv_ofb = summary_info["Tot conv sum OFB"]
+        ofb_conv_amt_sum_total = abs(tot_sum_conv_ofb["CONV  AMT"].sum())
+        data_text.insert(tk.END, f"Total CONV AMT: {ofb_conv_amt_sum_total:,.2f}\n")
     except Exception as e:
         log_text.insert(tk.END, f"Error: {str(e)}\n")
 
@@ -162,7 +220,7 @@ def paste_data():
         extraction_sheet = wb_to_use.sheets["DataExtraction"]
 
         # Find the last row with data in column A and clear the content from the sheet
-        last_row_cp = extraction_sheet.range("A2:L" + str(extraction_sheet.cells.last_cell.row))
+        last_row_cp = extraction_sheet.range("A2:M" + str(extraction_sheet.cells.last_cell.row))
         last_row_cp.clear_contents()
 
         dest_range = extraction_sheet.range("A2:G{}".format(len(status_list_dataframe) + 1))
@@ -171,9 +229,11 @@ def paste_data():
         interest_rate_range = extraction_sheet.range("J2:J{}".format(len(status_list_dataframe) + 1))
         interest_reset_date_range = extraction_sheet.range("K2:K{}".format(len(status_list_dataframe) + 1))
         undrawn_range = extraction_sheet.range("L2:L{}".format(len(status_list_dataframe) + 1))
+        modified_acct_no_range = extraction_sheet.range("M2:M{}".format(len(status_list_dataframe) + 1))
 
         dest_range.value = status_list_dataframe[
             ["ACCT NO.", "sch A acc", "CONV  AMT", "CON RT", "AMT", "ACCD INTT", "CUR"]].values
+        modified_acct_no_range.value = status_list_dataframe[["Modified ACCT NO."]].values
 
         # Get the values from the dataframe
         mat_date_values = status_list_dataframe["MAT DT"].values
@@ -222,7 +282,7 @@ def paste_data():
         log_text.insert(tk.END, f"Error: {str(e)}\n")
 
 
-def check_new():
+def check_new_ended():
     global wb_to_use
     global status_list_dataframe
     global update_progress_bar
@@ -230,19 +290,85 @@ def check_new():
     try:
         # Get the "ALL CP" sheet
         cp_sheet = wb_to_use.sheets("ALL CP")
+        prev_month_sheet = wb_to_use.sheets("PreviousMonth")
 
-        # create new_instruments list
+        # Populate previous month's dataframe
+        prev_month_last_row = prev_month_sheet.range("A" + str(prev_month_sheet.cells.last_cell.row)).end("up").row
+        prev_month_header_range = prev_month_sheet.range("A2:AK2")
+        prev_month_data_range = prev_month_sheet.range("A3").expand("down").resize(prev_month_last_row - 1,
+                                                                                   prev_month_header_range.columns.count)
+        columns = prev_month_header_range.value
+        data = prev_month_data_range.value
+
+        prev_month_filtered_data = []
+        for row in data:
+            acct_no = row[columns.index("ACCT NO.")]
+            sch_a_code = row[columns.index("sch A acc")]
+            cn = str(row[columns.index("CN")])
+
+            if acct_no and sch_a_code and cn != "ALL" and str(sch_a_code).startswith(("11", "12")):
+                prev_month_filtered_data.append(row)
+
+            elif acct_no and sch_a_code and cn != "ALL" \
+                and str(sch_a_code).startswith(("34321", "34311", "34220", "36300", "36400")):
+                prev_month_filtered_data.append(row)
+
+        prev_month_dataframe = pd.DataFrame(prev_month_filtered_data, columns=columns)
+
+        # create new_instruments and ended_instruments list
         new_instruments = []
+        ended_instruments = []
 
         # Check the "ALL CP" sheet for the existing instruments
         existing_instr_range = cp_sheet.range(
             "B2:B" + str(cp_sheet.range("A" + str(cp_sheet.cells.last_cell.row)).end("up").row))
         existing_instruments = existing_instr_range.value
 
+        # Before we add new instruments we check for any ended instruments
+        for index, row in enumerate(existing_instruments):
+            if row not in status_list_dataframe[status_list_dataframe["Balance Type"] == "On-balance"][
+                            "ACCT NO."].values:
+                if row not in status_list_dataframe[status_list_dataframe["Balance Type"] == "Off-balance"][
+                            "Modified ACCT NO."].values:
+                    ended_instruments.append(index)
+
+        if ended_instruments:
+            data_text.delete("1.0", tk.END)
+            data_text.insert("1.0", f"\n\n{len(ended_instruments)} instrument(s) marked as ""ENDED"" in ALL CP sheet:\n")
+            for index in ended_instruments:
+                acct_no = existing_instruments[index]
+                acct_no = int(acct_no) if isinstance(acct_no, float) else acct_no
+                cp_sheet.range(f"A{index + 2}").value = "ENDED"  # +2 to account for header row and 0 based indexing
+                data_text.insert(tk.END, f"Instrument with ID {str(acct_no)} is ended.\n")
+        else:
+            log_text.insert(tk.END, "No instruments have ended this month.\n")
+
+        # Compare the current and previous month dataframes to check if we missed any instruments
+        merged_df = pd.merge(prev_month_dataframe, status_list_dataframe, on="ACCT NO.", how="outer",
+                             indicator=True)
+        instruments_not_in_current_month = merged_df[merged_df["_merge"] == "left_only"]
+        instruments_not_in_cp = instruments_not_in_current_month[
+            ~instruments_not_in_current_month["ACCT NO."].astype(str).isin(map(str,
+                                                                               existing_instruments))]
+
+        if not instruments_not_in_cp.empty:
+            data_text.insert(tk.END, f"\n{len(instruments_not_in_cp)} instrument(s) found in the previous month that "
+                                     f"are not found in the current month or ALL CP, please investigate these "
+                                     f"manually:\n")
+            data_text.insert(tk.END, instruments_not_in_cp["ACCT NO."].apply(
+                lambda x: "{:.0f}".format(x) if isinstance(x, float) else x).to_string(index=False))
+        else:
+            log_text.insert(tk.END,
+                            "No instruments in previous month are not found in ALL CP or Current month.\n")
+
         # Check for any new instruments comparing the existing instruments listed in the "ALL CP" sheet
         # comparing it with the instruments in the dataframe
-        for index, row in status_list_dataframe.iterrows():
+        for index, row in status_list_dataframe[status_list_dataframe["Balance Type"] == "On-balance"].iterrows():
             acct_no = str(row["ACCT NO."])
+            if acct_no not in map(str, existing_instruments):
+                new_instruments.append(row)
+        for index, row in status_list_dataframe[status_list_dataframe["Balance Type"] == "Off-balance"].iterrows():
+            acct_no = str(row["Modified ACCT NO."])
             if acct_no not in map(str, existing_instruments):
                 new_instruments.append(row)
 
@@ -270,22 +396,32 @@ def check_new():
                 root.update()
 
                 # Paste the data in the respective columns
-                cp_sheet.range("A" + str(paste_row)).value = "New"
-                cp_sheet.range("B" + str(paste_row)).value = instrument[2]
-                cp_sheet.range("C" + str(paste_row)).value = instrument[3]
-                cp_sheet.range("E" + str(paste_row)).value = -instrument[5]
-                cp_sheet.range("F" + str(paste_row)).value = instrument[23]
-                if int(instrument[12]) == 18:
-                    cp_sheet.range("G" + str(paste_row)).value = 20
-                elif int(instrument[12]) == 12:
-                    cp_sheet.range("G" + str(paste_row)).value = 1000
-                elif int(instrument[12]) == 22:
-                    cp_sheet.range("G" + str(paste_row)).value = 71
-                elif int(instrument[12]) in {20, 21}:
-                    cp_sheet.range("G" + str(paste_row)).value = 1004
-                else:
-                    cp_sheet.range("G" + str(paste_row)).value = "NOT FOUND"
-                    cp_sheet.range("G" + str(paste_row)).color = 6
+                if instrument["Balance Type"] == "On-balance":
+                    cp_sheet.range("A" + str(paste_row)).value = "New"
+                    cp_sheet.range("B" + str(paste_row)).value = instrument[2]
+                    cp_sheet.range("C" + str(paste_row)).value = instrument[3]
+                    cp_sheet.range("E" + str(paste_row)).value = -instrument[5]
+                    cp_sheet.range("F" + str(paste_row)).value = instrument[23]
+                    if int(instrument[12]) == 18:
+                        cp_sheet.range("G" + str(paste_row)).value = 20
+                    elif int(instrument[12]) == 12:
+                        cp_sheet.range("G" + str(paste_row)).value = 1000
+                    elif int(instrument[12]) == 22:
+                        cp_sheet.range("G" + str(paste_row)).value = 71
+                    elif int(instrument[12]) in {20, 21}:
+                        cp_sheet.range("G" + str(paste_row)).value = 1004
+                    else:
+                        cp_sheet.range("G" + str(paste_row)).value = "NOT FOUND"
+                        cp_sheet.range("G" + str(paste_row)).color = 6
+                elif instrument["Balance Type"] == "Off-balance":
+                    cp_sheet.range("A" + str(paste_row)).value = "New"
+                    cp_sheet.range("B" + str(paste_row)).value = instrument["Modified ACCT NO."]
+                    cp_sheet.range("C" + str(paste_row)).value = instrument[3]
+                    cp_sheet.range("E" + str(paste_row)).value = instrument[5]
+                    if str(instrument["sch A acc"]).startswith(("34220", "36300", "36400")):
+                        cp_sheet.range("G" + str(paste_row)).value = 9000
+                    elif str(instrument["sch A acc"]).startswith(("34311", "34321")):
+                        cp_sheet.range("G" + str(paste_row)).value = 9002
 
         # Stop the progress bar
         update_progress_bar.stop()
@@ -295,7 +431,7 @@ def check_new():
             log_text.insert(tk.END, f"{len(new_instruments)} new instruments pasted successfully.\n")
         else:
             log_text.insert(tk.END, "No new instruments found.\n")
-        log_text.insert(tk.END, "New instruments checked successfully.\n")
+        log_text.insert(tk.END, "ALL CP checked successfully.\n")
     except Exception as e:
         log_text.insert(tk.END, f"Error: {str(e)}\n")
 
@@ -305,50 +441,54 @@ def validate_data():
     Checks per column of the "Data" tab the if the data is possible
     :return:
     """
-    global status_list_dataframe
-    global wb_to_use
+    try:
+        global wb_to_use
+        global status_list_dataframe
 
-    # First we fill the becris and counterparty dataframes,
-    # so they can be used later for validation.
-    counterparty_sheet = wb_to_use.sheets['Counterparties references']
-    becris_sheet = wb_to_use.sheets['Data']
+        # First we fill the becris and counterparty dataframes,
+        # so they can be used later for validation.
+        counterparty_sheet = wb_to_use.sheets['Counterparties references']
+        becris_sheet = wb_to_use.sheets['Data']
 
-    # Populating the counterparty dataframe
-    counterparty_last_row = counterparty_sheet.range("A" + str(counterparty_sheet.cells.last_cell.row)).end("up").row
-    counterparty_header_range = counterparty_sheet.range("A1").expand("right")
-    counterparty_data_range = counterparty_sheet.range("A2").expand("down").resize(counterparty_last_row - 1,
-                                                                                   counterparty_header_range.columns.count)
+        # Populating the counterparty dataframe
+        counterparty_last_row = counterparty_sheet.range("A" + str(counterparty_sheet.cells.last_cell.row)).end(
+            "up").row
+        counterparty_header_range = counterparty_sheet.range("A1").expand("right")
+        counterparty_data_range = counterparty_sheet.range("A2").expand("down").resize(counterparty_last_row - 1,
+                                                                                       counterparty_header_range.columns.count)
 
-    counterparty_columns = counterparty_header_range.value
-    counterparty_data = counterparty_data_range.value
+        counterparty_columns = counterparty_header_range.value
+        counterparty_data = counterparty_data_range.value
 
-    counterparty_dataframe = pd.DataFrame(counterparty_data, columns=counterparty_columns)
+        counterparty_dataframe = pd.DataFrame(counterparty_data, columns=counterparty_columns)
 
-    # Populating the becris dataframe
-    becris_last_row = becris_sheet.range("A" + str(becris_sheet.cells.last_cell.row)).end("up").row
-    becris_header_range = becris_sheet.range("A1").expand("right")
-    becris_data_range = becris_sheet.range("A2").expand("down").resize(becris_last_row - 1,
-                                                                       becris_header_range.columns.count)
+        # Populating the becris dataframe
+        becris_last_row = becris_sheet.range("A" + str(becris_sheet.cells.last_cell.row)).end("up").row
+        becris_header_range = becris_sheet.range("A1").expand("right")
+        becris_data_range = becris_sheet.range("A2").expand("down").resize(becris_last_row - 1,
+                                                                           becris_header_range.columns.count)
 
-    becris_columns = becris_header_range.value
-    becris_data = becris_data_range.value
-    filtered_becris_data = []
-    for row in becris_data:
-        if row[0] is not None:
-            filtered_becris_data.append(row)
+        becris_columns = becris_header_range.value
+        becris_data = becris_data_range.value
+        filtered_becris_data = []
+        for row in becris_data:
+            if row[0] is not None:
+                filtered_becris_data.append(row)
 
-    becris_dataframe = pd.DataFrame(filtered_becris_data, columns=becris_columns)
+        becris_dataframe = pd.DataFrame(filtered_becris_data, columns=becris_columns)
 
-    # Clear and update the data_text box
-    data_text.delete("1.0", tk.END)
-    data_text.insert("1.0", "Becris and Counterparty data summary:\n\n")
-    data_text.insert(tk.END, f"Counterparties found: {len(counterparty_dataframe)}\n")
-    data_text.insert(tk.END, f"Instruments found in becris data: {len(becris_dataframe)}\n\n")
+        # Clear and update the data_text box
+        data_text.delete("1.0", tk.END)
+        data_text.insert("1.0", "Becris and Counterparty data summary:\n\n")
+        data_text.insert(tk.END, f"Counterparties found: {len(counterparty_dataframe)}\n")
+        data_text.insert(tk.END, f"Instruments found in becris data: {len(becris_dataframe)}\n\n")
+    except Exception as e:
+        log_text.insert(tk.END, f'Error: {str(e)}\n')
 
-    def check_counterparty_identifier_uniqueness(counterparty_dataframe):
+    def check_counterparty_identifier_uniqueness(cp_dataframe):
         """
         Checks if Counterparty identifiers (ENI, LEI, RACI) in the Counterparty reference dataset are unique.
-        :param counterparty_dataframe: The DataFrame containing the Counterparty reference data.
+        :param cp_dataframe: The DataFrame containing the Counterparty reference data.
         :return: A boolean indicating whether the identifiers are unique or not.
         """
 
@@ -357,21 +497,21 @@ def validate_data():
         validity_result = []
 
         # Check ENI uniqueness, ignoring "NotRequired" values
-        eni_unique = (counterparty_dataframe["ENI"] != "NotRequired") \
-                     & counterparty_dataframe.duplicated(subset=["ENI"], keep=False)
+        eni_unique = (cp_dataframe["ENI"] != "NotRequired") \
+                     & cp_dataframe.duplicated(subset=["ENI"], keep=False)
         eni_duplicates = eni_unique.sum()
         validity_result.append(["ENI", eni_duplicates])
 
         # Check LEI uniqueness, ignoring "NotApplicable" values
-        lei_unique = (counterparty_dataframe["LEI"] != "NotApplicable") \
-                     & counterparty_dataframe.duplicated(subset=["LEI"], keep=False)
+        lei_unique = (cp_dataframe["LEI"] != "NotApplicable") \
+                     & cp_dataframe.duplicated(subset=["LEI"], keep=False)
         lei_duplicates = lei_unique.sum()
         validity_result.append(["LEI", lei_duplicates])
 
         # Check RACI for empty values (should not be empty)
-        raci_unique = counterparty_dataframe.duplicated(subset=["RACI"], keep=False)
+        raci_unique = cp_dataframe.duplicated(subset=["RACI"], keep=False)
         raci_duplicates = raci_unique.sum()
-        raci_empty = counterparty_dataframe["RACI"].isnull().sum()
+        raci_empty = cp_dataframe["RACI"].isnull().sum()
         validity_result.append(["RACI", raci_duplicates])
 
         validity_result_df = pd.DataFrame(validity_result, columns=columns)
@@ -451,14 +591,12 @@ def validate_data():
             data_text.insert(tk.END, "One or more checks failed for the 'Accumulated write-offs' column.\n")
 
         # Return True if all checks passed, otherwise False
-        return all_passed"""
+        return all_passed
+"""
 
     data_text.insert(tk.END, "Performing validity checks on counterparty references data...\n")
     is_counterparty_unique = check_counterparty_identifier_uniqueness(counterparty_dataframe)
 
-""" data_text.insert(tk.END, "\nPerforming validity checks on becris data...\n")
-    is_accumulated_write_offs_valid = check_accumulated_write_offs(becris_dataframe)
-"""
 
 # Create the GUI
 root = tk.Tk()
@@ -476,7 +614,7 @@ file_entry = tk.Entry(top_frame, width=90)
 file_entry.grid(row=1, column=1)  # Place the entry next to the button
 
 # Text widget for displaying data
-data_text = Text(root, width=80, height=20)
+data_text = Text(root, width=85, height=25)
 data_text.pack()
 
 # Progress bar
@@ -493,7 +631,7 @@ button_frame = Frame(root)
 button_frame.pack()
 
 # Button to check for new instruments
-update_new_button = Button(button_frame, text="Check for new instruments", command=check_new, state=tk.DISABLED)
+update_new_button = Button(button_frame, text="Check for new/ended instruments", command=check_new_ended, state=tk.DISABLED)
 update_new_button.pack(side=tk.LEFT, padx=5)
 
 # Button to paste data
@@ -501,7 +639,7 @@ paste_button = Button(button_frame, text="Paste data in ""DataExtraction"" tab",
 paste_button.pack(side=tk.LEFT)
 
 # Button to validate data
-validate_button = Button(button_frame, text="Validate Becris Data", command=validate_data, state=tk.DISABLED)
+validate_button = Button(button_frame, text="Validate CP data", command=validate_data, state=tk.DISABLED)
 validate_button.pack(side=tk.LEFT, padx=5)
 
 # Log widget

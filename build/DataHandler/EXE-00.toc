@@ -68,7 +68,7 @@
  [],
  False,
  False,
- 1690269455,
+ 1690295508,
  [('run.exe',
    'C:\\Users\\stagiair\\PycharmProjects\\BecrisExcelReader\\venv\\Lib\\site-packages\\PyInstaller\\bootloader\\Windows-64bit-intel\\run.exe',
    'EXECUTABLE')])

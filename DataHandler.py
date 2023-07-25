@@ -86,13 +86,9 @@ def fetch_data():
             acct_no = row[columns.index("ACCT NO.")]
             sch_a_code = row[columns.index("sch A acc")]
             cn = str(row[columns.index("CN")])
+            gl_hd = str(row[columns.index("GL Hd")])
 
             if acct_no and sch_a_code and cn != "ALL" \
-                    and str(sch_a_code).startswith(("11", "12")):
-                row.append("On-balance")
-                filtered_data.append(row)
-
-            elif acct_no and sch_a_code and cn != "ALL" \
                     and str(sch_a_code).startswith(("34321", "34311", "34220", "36300", "36400")):
                 first_five_numbers = str(sch_a_code)[:5]
                 if isinstance(acct_no, str):
@@ -105,6 +101,18 @@ def fetch_data():
                 row.append("Off-balance")
                 row.append(new_acct_no)
                 filtered_data.append(row)
+
+            elif acct_no and sch_a_code and cn != "ALL":
+                if gl_hd in {'12.0','18.0'}:
+                    row.append("On-balance")
+                    row.append(acct_no)
+                    filtered_data.append(row)
+                elif str(sch_a_code).startswith(("11", "12")):
+                    row.append("On-balance")
+                    row.append(acct_no)
+                    filtered_data.append(row)
+
+
 
         # Create a DataFrame from the filtered data
         columns.append("Balance Type")

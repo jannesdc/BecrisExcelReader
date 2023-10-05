@@ -142,6 +142,7 @@ def fetch_data():
         paste_button.config(state=tk.NORMAL)
         update_new_button.config(state=tk.NORMAL)
         validate_button.config(state=tk.NORMAL)
+        rename_button.config(state=tk.NORMAL)
     except Exception as e:
         log_text.insert(tk.END, f"Error: {str(e)}\n")
 
@@ -455,6 +456,18 @@ def check_new_ended():
         log_text.insert(tk.END, f"Error: {str(e)}\n")
 
 
+def edit_buyers_credit():
+    global wb_to_use
+    global status_list_dataframe
+
+    current_month_sheet = wb_to_use.sheets["CurrentMonth"]
+    headers = current_month_sheet.range("A2:AK2").value
+
+    for row in current_month_sheet.range("A3:AK3").expand("down").rows:
+        if str(row[headers.index("ACCT DESCRIPTION")].value) == "BUYERS CREDIT":
+            row[headers.index("NAME")].value = "STATE BANK OF INDIA, INDIA"
+
+
 def validate_data():
     """
     Checks per column of the "Data" tab the if the data is possible
@@ -644,6 +657,10 @@ update_progress_bar.stop()
 # Button to fetch data
 fetch_button = Button(root, text="Fetch data", command=fetch_data, state=tk.DISABLED)
 fetch_button.pack()
+
+# Button to change Buyers credit name in current month
+rename_button = Button(root, text="Rename Buyers Credit", command=edit_buyers_credit, state=tk.DISABLED)
+rename_button.pack()
 
 # Frame to hold the buttons
 button_frame = Frame(root)

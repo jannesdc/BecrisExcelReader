@@ -318,7 +318,12 @@ def check_new_ended():
 
             elif acct_no and sch_a_code and cn != "ALL" \
                     and str(sch_a_code).startswith(("34321", "34311", "34220", "36300", "36400")):
-                prev_month_filtered_data.append(row)
+                if str(sch_a_code).startswith("36300"):
+                    type_acct = row[columns.index("TYPE OF ACCOUNT")]
+                    if type_acct == "BANK GUARANTEES":
+                        prev_month_filtered_data.append(row)
+                elif str(sch_a_code).startswith(("34321", "34311", "34220", "36400")):
+                    prev_month_filtered_data.append(row)
 
         prev_month_dataframe = pd.DataFrame(prev_month_filtered_data, columns=columns)
 

@@ -102,7 +102,7 @@ def fetch_data():
                 row.append(new_acct_no)
 
                 if str(sch_a_code).startswith("36300"):
-                    type_acct = row[columns.index("TYPE OF ACCOUNT")]
+                    type_acct = str(row[columns.index("TYPE OF ACCOUNT")])
                     if type_acct == "BANK GUARANTEES":
                         filtered_data.append(row)
                 elif str(sch_a_code).startswith(("34321", "34311", "34220", "36400")):

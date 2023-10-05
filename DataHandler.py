@@ -100,7 +100,13 @@ def fetch_data():
                 new_acct_no = f"{acct_no}_{first_five_numbers}"
                 row.append("Off-balance")
                 row.append(new_acct_no)
-                filtered_data.append(row)
+
+                if str(sch_a_code).startswith("36300"):
+                    type_acct = row[columns.index("TYPE OF ACCOUNT")]
+                    if type_acct == "BANK GUARANTEES":
+                        filtered_data.append(row)
+                elif str(sch_a_code).startswith(("34321", "34311", "34220", "36400")):
+                    filtered_data.append(row)
 
             elif acct_no and sch_a_code and cn != "ALL":
                 if gl_hd in {'12.0', '18.0'}:

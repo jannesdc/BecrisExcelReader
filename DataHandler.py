@@ -124,6 +124,13 @@ def fetch_data():
         df = pd.DataFrame(filtered_data, columns=columns)
         status_list_dataframe = df
 
+        # Change amounts to 0 when needed
+        condition = ((status_list_dataframe["GL Hd"].isin([12, 18]))
+                     & (status_list_dataframe["AMT"] > 0)
+                     & (status_list_dataframe["CONV  AMT"] > 0))
+
+        status_list_dataframe.loc[condition, ["AMT", "CONV  AMT"]] = 0
+
         # Convert the values in the 'sch A acc' column to strings
         df['sch A acc'] = df['sch A acc'].astype(str)
 

@@ -516,11 +516,37 @@ def validate_data():
 
         becris_dataframe = pd.DataFrame(filtered_becris_data, columns=becris_columns)
 
+        # Rules to apply to the becris dataframe
+        rules = [
+            {
+                "condition": (becris_dataframe["Next interest rate reset date"] != "NotApplicable") &
+                             (becris_dataframe["Next interest rate reset date"] >= becris_dataframe["Inception date"]),
+                "code": "DTS_CS_FIN_002",
+                "action": "Value reported for the attribute \"Next interest rate reset date\" is not consistent "
+                          "with the attribute \"Inception date\"."
+            },
+            {
+                "condition": (),
+                "code": "",
+                "action": ""
+            }
+        ]
+
         # Clear and update the data_text box
         data_text.delete("1.0", tk.END)
         data_text.insert("1.0", "Becris and Counterparty data summary:\n\n")
         data_text.insert(tk.END, f"Counterparties found: {len(counterparty_dataframe)}\n")
         data_text.insert(tk.END, f"Instruments found in becris data: {len(becris_dataframe)}\n\n")
+
+        for rule in rules:
+            condition = rule["condition"]
+            code = rule["code"]
+            action = rule["action"]
+            matching_rows = becris_dataframe[condition]
+
+            if not matching_rows.empty:
+                print(f"{code}: {action}")
+
     except Exception as e:
         log_text.insert(tk.END, f'Error: {str(e)}\n')
 

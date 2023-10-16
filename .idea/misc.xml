@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="Black">
-    <option name="sdkUUID" value="84550119-a94a-4f26-b69d-76043c9894e4" />
+    <option name="sdkName" value="Python 3.11 (BecrisExcelReader)" />
   </component>
   <component name="ProjectRootManager" version="2" project-jdk-name="Python 3.11 (BecrisExcelReader)" project-jdk-type="Python SDK" />
 </project>

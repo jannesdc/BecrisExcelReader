@@ -1,0 +1,5 @@
+xlwings==0.30.11
+pandas==2.1.0
+numpy==1.25.2
+customtkinter==5.2.0
+CTkTable==0.8.0

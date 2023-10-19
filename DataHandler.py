@@ -100,10 +100,16 @@ def fetch_data():
                 new_acct_no = f"{acct_no}_{first_five_numbers}"
                 row.append("Off-balance")
                 row.append(new_acct_no)
-                filtered_data.append(row)
+
+                if str(sch_a_code).startswith("36300"):
+                    type_acct = str(row[columns.index("TYPE OF ACCOUNT")])
+                    if type_acct == "BANK GUARANTEES":
+                        filtered_data.append(row)
+                elif str(sch_a_code).startswith(("34321", "34311", "34220", "36400")):
+                    filtered_data.append(row)
 
             elif acct_no and sch_a_code and cn != "ALL":
-                if gl_hd in {'12.0','18.0'}:
+                if gl_hd in {'12.0', '18.0'}:
                     row.append("On-balance")
                     row.append(acct_no)
                     filtered_data.append(row)
@@ -112,13 +118,18 @@ def fetch_data():
                     row.append(acct_no)
                     filtered_data.append(row)
 
-
-
         # Create a DataFrame from the filtered data
         columns.append("Balance Type")
         columns.append("Modified ACCT NO.")
         df = pd.DataFrame(filtered_data, columns=columns)
         status_list_dataframe = df
+
+        # Change amounts to 0 when needed
+        condition = ((status_list_dataframe["GL Hd"].isin([12, 18]))
+                     & (status_list_dataframe["AMT"] > 0)
+                     & (status_list_dataframe["CONV  AMT"] > 0))
+
+        status_list_dataframe.loc[condition, ["AMT", "CONV  AMT"]] = 0
 
         # Convert the values in the 'sch A acc' column to strings
         df['sch A acc'] = df['sch A acc'].astype(str)
@@ -138,6 +149,7 @@ def fetch_data():
         paste_button.config(state=tk.NORMAL)
         update_new_button.config(state=tk.NORMAL)
         validate_button.config(state=tk.NORMAL)
+        rename_button.config(state=tk.NORMAL)
     except Exception as e:
         log_text.insert(tk.END, f"Error: {str(e)}\n")
 
@@ -154,9 +166,10 @@ def calculate_summary():
         sums_by_sch_a_code = status_list_dataframe[status_list_dataframe["Balance Type"] ==
                                                    "On-balance"].groupby("sch A acc")["CONV  AMT"].sum().reset_index()
         tot_sum_amt_ofb = status_list_dataframe[status_list_dataframe["Balance Type"] ==
-                                                   "Off-balance"].groupby("sch A acc")["AMT"].sum().reset_index()
+                                                "Off-balance"].groupby("sch A acc")["AMT"].sum().reset_index()
         tot_sum_conv_amt_ofb = status_list_dataframe[status_list_dataframe["Balance Type"] ==
-                                                   "Off-balance"].groupby("sch A acc")["CONV  AMT"].sum().reset_index()
+                                                     "Off-balance"].groupby("sch A acc")[
+            "CONV  AMT"].sum().reset_index()
 
         # Store the summary information
         summary_info = {
@@ -318,8 +331,13 @@ def check_new_ended():
                 prev_month_filtered_data.append(row)
 
             elif acct_no and sch_a_code and cn != "ALL" \
-                and str(sch_a_code).startswith(("34321", "34311", "34220", "36300", "36400")):
-                prev_month_filtered_data.append(row)
+                    and str(sch_a_code).startswith(("34321", "34311", "34220", "36300", "36400")):
+                if str(sch_a_code).startswith("36300"):
+                    type_acct = row[columns.index("TYPE OF ACCOUNT")]
+                    if type_acct == "BANK GUARANTEES":
+                        prev_month_filtered_data.append(row)
+                elif str(sch_a_code).startswith(("34321", "34311", "34220", "36400")):
+                    prev_month_filtered_data.append(row)
 
         prev_month_dataframe = pd.DataFrame(prev_month_filtered_data, columns=columns)
 
@@ -335,14 +353,15 @@ def check_new_ended():
         # Before we add new instruments we check for any ended instruments
         for index, row in enumerate(existing_instruments):
             if row not in status_list_dataframe[status_list_dataframe["Balance Type"] == "On-balance"][
-                            "ACCT NO."].values:
+                "ACCT NO."].values:
                 if row not in status_list_dataframe[status_list_dataframe["Balance Type"] == "Off-balance"][
-                            "Modified ACCT NO."].values:
+                    "Modified ACCT NO."].values:
                     ended_instruments.append(index)
 
         if ended_instruments:
             data_text.delete("1.0", tk.END)
-            data_text.insert("1.0", f"\n\n{len(ended_instruments)} instrument(s) marked as ""ENDED"" in ALL CP sheet:\n")
+            data_text.insert("1.0",
+                             f"\n\n{len(ended_instruments)} instrument(s) marked as ""ENDED"" in ALL CP sheet:\n")
             for index in ended_instruments:
                 acct_no = existing_instruments[index]
                 acct_no = int(acct_no) if isinstance(acct_no, float) else acct_no
@@ -406,17 +425,17 @@ def check_new_ended():
                 # Paste the data in the respective columns
                 if instrument["Balance Type"] == "On-balance":
                     cp_sheet.range("A" + str(paste_row)).value = "New"
-                    cp_sheet.range("B" + str(paste_row)).value = instrument[2]
-                    cp_sheet.range("C" + str(paste_row)).value = instrument[3]
-                    cp_sheet.range("E" + str(paste_row)).value = -instrument[5]
-                    cp_sheet.range("F" + str(paste_row)).value = instrument[23]
-                    if int(instrument[12]) == 18:
+                    cp_sheet.range("B" + str(paste_row)).value = instrument.iloc[2]
+                    cp_sheet.range("C" + str(paste_row)).value = instrument.iloc[3]
+                    cp_sheet.range("E" + str(paste_row)).value = -instrument.iloc[5]
+                    cp_sheet.range("F" + str(paste_row)).value = instrument.iloc[23]
+                    if int(instrument.iloc[12]) == 18:
                         cp_sheet.range("G" + str(paste_row)).value = 20
-                    elif int(instrument[12]) == 12:
+                    elif int(instrument.iloc[12]) == 12:
                         cp_sheet.range("G" + str(paste_row)).value = 1000
-                    elif int(instrument[12]) == 22:
+                    elif int(instrument.iloc[12]) == 22:
                         cp_sheet.range("G" + str(paste_row)).value = 71
-                    elif int(instrument[12]) in {20, 21}:
+                    elif int(instrument.iloc[12]) in {20, 21}:
                         cp_sheet.range("G" + str(paste_row)).value = 1004
                     else:
                         cp_sheet.range("G" + str(paste_row)).value = "NOT FOUND"
@@ -424,8 +443,8 @@ def check_new_ended():
                 elif instrument["Balance Type"] == "Off-balance":
                     cp_sheet.range("A" + str(paste_row)).value = "New"
                     cp_sheet.range("B" + str(paste_row)).value = instrument["Modified ACCT NO."]
-                    cp_sheet.range("C" + str(paste_row)).value = instrument[3]
-                    cp_sheet.range("E" + str(paste_row)).value = instrument[5]
+                    cp_sheet.range("C" + str(paste_row)).value = instrument.iloc[3]
+                    cp_sheet.range("E" + str(paste_row)).value = instrument.iloc[5]
                     if str(instrument["sch A acc"]).startswith(("34220", "36300", "36400")):
                         cp_sheet.range("G" + str(paste_row)).value = 9000
                     elif str(instrument["sch A acc"]).startswith(("34311", "34321")):
@@ -442,6 +461,18 @@ def check_new_ended():
         log_text.insert(tk.END, "ALL CP checked successfully.\n")
     except Exception as e:
         log_text.insert(tk.END, f"Error: {str(e)}\n")
+
+
+def edit_buyers_credit():
+    global wb_to_use
+    global status_list_dataframe
+
+    current_month_sheet = wb_to_use.sheets["CurrentMonth"]
+    headers = current_month_sheet.range("A2:AK2").value
+
+    for row in current_month_sheet.range("A3:AK3").expand("down").rows:
+        if str(row[headers.index("ACCT DESCRIPTION")].value) == "BUYERS CREDIT":
+            row[headers.index("NAME")].value = "STATE BANK OF INDIA, INDIA"
 
 
 def validate_data():
@@ -485,11 +516,37 @@ def validate_data():
 
         becris_dataframe = pd.DataFrame(filtered_becris_data, columns=becris_columns)
 
+        # Rules to apply to the becris dataframe
+        rules = [
+            {
+                "condition": (becris_dataframe["Next interest rate reset date"] != "NotApplicable") &
+                             (becris_dataframe["Next interest rate reset date"] >= becris_dataframe["Inception date"]),
+                "code": "DTS_CS_FIN_002",
+                "action": "Value reported for the attribute \"Next interest rate reset date\" is not consistent "
+                          "with the attribute \"Inception date\"."
+            },
+            {
+                "condition": (),
+                "code": "",
+                "action": ""
+            }
+        ]
+
         # Clear and update the data_text box
         data_text.delete("1.0", tk.END)
         data_text.insert("1.0", "Becris and Counterparty data summary:\n\n")
         data_text.insert(tk.END, f"Counterparties found: {len(counterparty_dataframe)}\n")
         data_text.insert(tk.END, f"Instruments found in becris data: {len(becris_dataframe)}\n\n")
+
+        for rule in rules:
+            condition = rule["condition"]
+            code = rule["code"]
+            action = rule["action"]
+            matching_rows = becris_dataframe[condition]
+
+            if not matching_rows.empty:
+                print(f"{code}: {action}")
+
     except Exception as e:
         log_text.insert(tk.END, f'Error: {str(e)}\n')
 
@@ -634,12 +691,17 @@ update_progress_bar.stop()
 fetch_button = Button(root, text="Fetch data", command=fetch_data, state=tk.DISABLED)
 fetch_button.pack()
 
+# Button to change Buyers credit name in current month
+rename_button = Button(root, text="Rename Buyers Credit", command=edit_buyers_credit, state=tk.DISABLED)
+rename_button.pack()
+
 # Frame to hold the buttons
 button_frame = Frame(root)
 button_frame.pack()
 
 # Button to check for new instruments
-update_new_button = Button(button_frame, text="Check for new/ended instruments", command=check_new_ended, state=tk.DISABLED)
+update_new_button = Button(button_frame, text="Check for new/ended instruments", command=check_new_ended,
+                           state=tk.DISABLED)
 update_new_button.pack(side=tk.LEFT, padx=5)
 
 # Button to paste data

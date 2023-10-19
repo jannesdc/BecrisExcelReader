@@ -5,7 +5,7 @@
       <excludeFolder url="file://$MODULE_DIR$/venv" />
       <excludePattern pattern="config.ini" />
     </content>
-    <orderEntry type="jdk" jdkName="Python 3.11 (BecrisExcelReader)" jdkType="Python SDK" />
+    <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
   </component>
 </module>

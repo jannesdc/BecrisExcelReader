@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="78c8e1e2-2362-4064-81c8-4322f76a11a7" name="Changes" comment="add: set negative currency amounts to 0 when applicable">
+      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/DataHandler.py" beforeDir="false" afterPath="$PROJECT_DIR$/DataHandler.py" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_BRANCH_BY_REPOSITORY">
+      <map>
+        <entry key="$PROJECT_DIR$" value="dev" />
+      </map>
+    </option>
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="MarkdownSettingsMigration">
+    <option name="stateVersion" value="1" />
+  </component>
+  <component name="ProjectColorInfo">{
+  &quot;customColor&quot;: &quot;&quot;,
+  &quot;associatedIndex&quot;: 2
+}</component>
+  <component name="ProjectId" id="2W4GsftdJgJSnHsCBqIAxgNro9k" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "RunOnceActivity.OpenProjectViewOnStart": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "git-widget-placeholder": "master",
+    "ignore.virus.scanning.warn.message": "true",
+    "settings.editor.selected.configurable": "preferences.pluginManager"
+  }
+}]]></component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="78c8e1e2-2362-4064-81c8-4322f76a11a7" name="Changes" comment="" />
+      <created>1695984648656</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1695984648656</updated>
+    </task>
+    <task id="LOCAL-00001" summary="pandas iloc future warning fix">
+      <option name="closed" value="true" />
+      <created>1695986715656</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1695986715656</updated>
+    </task>
+    <task id="LOCAL-00002" summary="add: requirements.txt">
+      <option name="closed" value="true" />
+      <created>1695987648764</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1695987648764</updated>
+    </task>
+    <task id="LOCAL-00003" summary="change: fix for off balance items with schema A code &quot;36300&quot;">
+      <option name="closed" value="true" />
+      <created>1696487981712</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1696487981712</updated>
+    </task>
+    <task id="LOCAL-00004" summary="change: fix for off balance items with schema A code &quot;36300&quot; current month">
+      <option name="closed" value="true" />
+      <created>1696488206482</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1696488206482</updated>
+    </task>
+    <task id="LOCAL-00005" summary="change: fix for fix for off balance items with schema A code &quot;36300&quot;">
+      <option name="closed" value="true" />
+      <created>1696489406255</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1696489406255</updated>
+    </task>
+    <task id="LOCAL-00006" summary="add: new function to change the name of Buyers credits">
+      <option name="closed" value="true" />
+      <created>1696495706515</created>
+      <option name="number" value="00006" />
+      <option name="presentableId" value="LOCAL-00006" />
+      <option name="project" value="LOCAL" />
+      <updated>1696495706515</updated>
+    </task>
+    <task id="LOCAL-00007" summary="add: set negative currency amounts to 0 when applicable">
+      <option name="closed" value="true" />
+      <created>1696516695336</created>
+      <option name="number" value="00007" />
+      <option name="presentableId" value="LOCAL-00007" />
+      <option name="project" value="LOCAL" />
+      <updated>1696516695336</updated>
+    </task>
+    <option name="localTasksCounter" value="8" />
+    <servers />
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="RECENT_FILTERS">
+      <map>
+        <entry key="Branch">
+          <value>
+            <list>
+              <RecentGroup>
+                <option name="FILTER_VALUES">
+                  <option value="origin/dev" />
+                </option>
+              </RecentGroup>
+            </list>
+          </value>
+        </entry>
+      </map>
+    </option>
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State>
+              <option name="FILTERS">
+                <map>
+                  <entry key="branch">
+                    <value>
+                      <list>
+                        <option value="origin/dev" />
+                      </list>
+                    </value>
+                  </entry>
+                </map>
+              </option>
+            </State>
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="pandas iloc future warning fix" />
+    <MESSAGE value="add: requirements.txt" />
+    <MESSAGE value="change: fix for off balance items with schema A code &quot;36300&quot;" />
+    <MESSAGE value="change: fix for off balance items with schema A code &quot;36300&quot; current month" />
+    <MESSAGE value="change: fix for fix for off balance items with schema A code &quot;36300&quot;" />
+    <MESSAGE value="add: new function to change the name of Buyers credits" />
+    <MESSAGE value="add: set negative currency amounts to 0 when applicable" />
+    <option name="LAST_COMMIT_MESSAGE" value="add: set negative currency amounts to 0 when applicable" />
+  </component>
+  <component name="XDebuggerManager">
+    <watches-manager>
+      <configuration name="PythonConfigurationType">
+        <watch expression="headers" />
+      </configuration>
+    </watches-manager>
+  </component>
+</project>

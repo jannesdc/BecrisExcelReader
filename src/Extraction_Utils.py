@@ -274,16 +274,21 @@ def check_new_ended(app_instance):
 
         # Check the "ALL CP" sheet for the existing instruments
         existing_instr_range = cp_sheet.range(
-            "B2:B" + str(cp_sheet.range("A" + str(cp_sheet.cells.last_cell.row)).end("up").row))
+            "A2:B" + str(cp_sheet.range("A" + str(cp_sheet.cells.last_cell.row)).end("up").row))
         existing_instruments = existing_instr_range.value
 
+        '''for index, (status, acct_no) in enumerate(existing_instruments):
+            if status == "ENDED":
+                existing_instr_range[index, 0].value = "HISTO"
+
         # Before we add new instruments we check for any ended instruments
-        for index, row in enumerate(existing_instruments):
-            if row not in status_list_dataframe[status_list_dataframe["Balance Type"] == "On-balance"][
-                "ACCT NO."].values:
-                if row not in status_list_dataframe[status_list_dataframe["Balance Type"] == "Off-balance"][
-                    "Modified ACCT NO."].values:
-                    ended_instruments.append(index)
+        for index, (status, acct_no) in enumerate(existing_instruments):
+            if status == "Existing":
+                if acct_no not in status_list_dataframe[status_list_dataframe["Balance Type"] == "On-balance"][
+                    "ACCT NO."].values:
+                    if acct_no not in status_list_dataframe[status_list_dataframe["Balance Type"] == "Off-balance"][
+                        "Modified ACCT NO."].values:
+                        ended_instruments.append(index)
 
         if ended_instruments:
             app_instance.text_output_log.delete("1.0", ctk.END)
@@ -295,7 +300,7 @@ def check_new_ended(app_instance):
                 cp_sheet.range(f"A{index + 2}").value = "ENDED"  # +2 to account for header row and 0 based indexing
                 app_instance.text_output_log.insert(tk.END, f"Instrument with ID {str(acct_no)} is ended.\n")
         else:
-            print("No instruments have ended this month.\n")
+            print("No instruments have ended this month.\n")'''
 
         # Compare the current and previous month dataframes to check if we missed any instruments
         merged_df = pd.merge(prev_month_dataframe, status_list_dataframe, on="ACCT NO.", how="outer",
@@ -319,11 +324,11 @@ def check_new_ended(app_instance):
         # comparing it with the instruments in the dataframe
         for index, row in status_list_dataframe[status_list_dataframe["Balance Type"] == "On-balance"].iterrows():
             acct_no = str(row["ACCT NO."])
-            if acct_no not in map(str, existing_instruments):
+            if acct_no not in map(str,[item[1] for item in existing_instruments]):
                 new_instruments.append(row)
         for index, row in status_list_dataframe[status_list_dataframe["Balance Type"] == "Off-balance"].iterrows():
             acct_no = str(row["Modified ACCT NO."])
-            if acct_no not in map(str, existing_instruments):
+            if acct_no not in map(str,[item[1] for item in existing_instruments]):
                 new_instruments.append(row)
 
         # Paste the new instruments data at the end of the existing list in the "ALL CP" sheet

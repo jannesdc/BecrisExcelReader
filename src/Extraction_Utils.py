@@ -2,6 +2,7 @@ import os
 import xlwings as xw
 import pandas as pd
 import numpy as np
+import math
 
 from src.GUI import *
 
@@ -161,72 +162,75 @@ def paste_data(app_instance):
     global status_list_dataframe
     global wb_to_use
 
-    try:
-        # Get the "DataExtraction" sheet from the workbook
-        app_instance.progress_bar.start_indeterminate()
-        extraction_sheet = wb_to_use.sheets["DataExtraction"]
+    #try:
+    # Get the "DataExtraction" sheet from the workbook
+    app_instance.progress_bar.start_indeterminate()
+    extraction_sheet = wb_to_use.sheets["DataExtraction"]
 
-        # Find the last row with data in column A and clear the content from the sheet
-        last_row_cp = extraction_sheet.range("A2:M" + str(extraction_sheet.cells.last_cell.row))
-        last_row_cp.clear_contents()
+    # Find the last row with data in column A and clear the content from the sheet
+    last_row_cp = extraction_sheet.range("A2:M" + str(extraction_sheet.cells.last_cell.row))
+    last_row_cp.clear_contents()
 
-        dest_range = extraction_sheet.range("A2:G{}".format(len(status_list_dataframe) + 1))
-        interest_rate_type_range = extraction_sheet.range("H2:H{}".format(len(status_list_dataframe) + 1))
-        mat_date_range = extraction_sheet.range("I2:I{}".format(len(status_list_dataframe) + 1))
-        interest_rate_range = extraction_sheet.range("J2:J{}".format(len(status_list_dataframe) + 1))
-        interest_reset_date_range = extraction_sheet.range("K2:K{}".format(len(status_list_dataframe) + 1))
-        undrawn_range = extraction_sheet.range("L2:L{}".format(len(status_list_dataframe) + 1))
-        modified_acct_no_range = extraction_sheet.range("M2:M{}".format(len(status_list_dataframe) + 1))
+    dest_range = extraction_sheet.range("A2:G{}".format(len(status_list_dataframe) + 1))
+    interest_rate_type_range = extraction_sheet.range("H2:H{}".format(len(status_list_dataframe) + 1))
+    mat_date_range = extraction_sheet.range("I2:I{}".format(len(status_list_dataframe) + 1))
+    interest_rate_range = extraction_sheet.range("J2:J{}".format(len(status_list_dataframe) + 1))
+    interest_reset_date_range = extraction_sheet.range("K2:K{}".format(len(status_list_dataframe) + 1))
+    undrawn_range = extraction_sheet.range("L2:L{}".format(len(status_list_dataframe) + 1))
+    modified_acct_no_range = extraction_sheet.range("M2:M{}".format(len(status_list_dataframe) + 1))
 
-        dest_range.value = status_list_dataframe[
-            ["ACCT NO.", "sch A acc", "CONV  AMT", "CON RT", "AMT", "ACCD INTT", "CUR"]].values
-        modified_acct_no_range.value = status_list_dataframe[["Modified ACCT NO."]].values
+    dest_range.value = status_list_dataframe[
+        ["ACCT NO.", "sch A acc", "CONV  AMT", "CON RT", "AMT", "ACCD INTT", "CUR"]].values
+    modified_acct_no_range.value = status_list_dataframe[["Modified ACCT NO."]].values
 
-        # Get the values from the dataframe
-        mat_date_values = status_list_dataframe["MAT DT"].values
-        interest_type_values = status_list_dataframe["FLOATING/ FIXED"].values
-        interest_rate_values = status_list_dataframe["ROI"].values
-        interest_reset_date_values = status_list_dataframe["LAST RESET"].values
-        undrawn_values = status_list_dataframe["UNDRAWN"].values
+    # Get the values from the dataframe
+    mat_date_values = status_list_dataframe["MAT DT"].values
+    interest_type_values = status_list_dataframe["FLOATING/ FIXED"].values
+    interest_rate_values = status_list_dataframe["ROI"].values
+    interest_reset_date_values = status_list_dataframe["LAST RESET"].values
+    undrawn_values = status_list_dataframe["UNDRAWN"].values
 
-        # Prepare the values for insertion
-        mat_date_values_array = [[value if not (pd.isna(value) or np.isnat(value)) else "NotApplicable"] for value in
-                                 mat_date_values]
-        interest_type_values_array = [[value] if value else ["NotApplicable"] for value in interest_type_values]
-        interest_rate_array = []
-        undrawn_array = []
-        for value, cif_value in zip(interest_rate_values, status_list_dataframe["CIF"]):
-            if cif_value == 'Office Account':
-                interest_rate_array.append(["NotApplicable"])
-            elif value:
-                interest_rate_array.append([abs(value / 100)])
-            else:
-                interest_rate_array.append([""])
-        interest_reset_date_array = [[value] if value else ["NotApplicable"] for value in interest_reset_date_values]
-        for value, cif_value in zip(undrawn_values, status_list_dataframe["CIF"]):
-            if cif_value == "Office Account":
-                undrawn_array.append(["NotApplicable"])
-            elif value:
-                undrawn_array.append([abs(value)])
-            else:
-                undrawn_array.append([0])
+    # Prepare the values for insertion
+    mat_date_values_array = [[value if not (pd.isna(value) or np.isnat(value)) else "NotApplicable"] for value in
+                             mat_date_values]
+    interest_type_values_array = [[value] if value else ["NotApplicable"] for value in interest_type_values]
+    interest_rate_array = []
+    undrawn_array = []
+    for value, cif_value in zip(interest_rate_values, status_list_dataframe["CIF"]):
+        if cif_value == 'Office Account':
+            interest_rate_array.append(["NotApplicable"])
+        elif value:
+            interest_rate_array.append([abs(value / 100)])
+        else:
+            interest_rate_array.append([""])
+    interest_reset_date_array = [
+        [value] if not pd.isnull(value) else ["NotApplicable"]
+        for value in interest_reset_date_values
+    ]
+    for value, cif_value in zip(undrawn_values, status_list_dataframe["CIF"]):
+        if cif_value == "Office Account":
+            undrawn_array.append(["NotApplicable"])
+        elif value:
+            undrawn_array.append([abs(value)])
+        else:
+            undrawn_array.append([0])
 
-        # Insert the values into the range
-        mat_date_range.value = mat_date_values_array
-        interest_rate_type_range.value = interest_type_values_array
-        interest_rate_range.value = interest_rate_array
-        interest_reset_date_range.value = interest_reset_date_array
-        undrawn_range.value = undrawn_array
+    # Insert the values into the range
+    mat_date_range.value = mat_date_values_array
+    interest_rate_type_range.value = interest_type_values_array
+    interest_rate_range.value = interest_rate_array
+    interest_reset_date_range.value = interest_reset_date_array
+    undrawn_range.value = undrawn_array
 
-        # Update the log widget
-        app_instance.progress_bar.stop_progress()
-        wb_to_use.save()
-        app_instance.menu.extraction_frame.paste_button.configure(fg_color="green")
-        print("Data pasted successfully.")
+    # Update the log widget
+    app_instance.progress_bar.stop_progress()
+    wb_to_use.save()
+    app_instance.menu.extraction_frame.paste_button.configure(fg_color="green")
+    print("Data pasted successfully.")
 
-    except Exception as e:
-        app_instance.menu.extraction_frame.paste_button.configure(fg_color="darkred")
-        print(f"Error: {str(e)}\n")
+    #except Exception as e:
+    #app_instance.menu.extraction_frame.paste_button.configure(fg_color="darkred")
+    #print(f"Error: {str(e)}\n")
 
 
 def check_new_ended(app_instance):

@@ -277,7 +277,7 @@ def check_new_ended(app_instance):
             "A2:B" + str(cp_sheet.range("A" + str(cp_sheet.cells.last_cell.row)).end("up").row))
         existing_instruments = existing_instr_range.value
 
-        '''for index, (status, acct_no) in enumerate(existing_instruments):
+        for index, (status, acct_no) in enumerate(existing_instruments):
             if status == "ENDED":
                 existing_instr_range[index, 0].value = "HISTO"
 
@@ -300,7 +300,7 @@ def check_new_ended(app_instance):
                 cp_sheet.range(f"A{index + 2}").value = "ENDED"  # +2 to account for header row and 0 based indexing
                 app_instance.text_output_log.insert(tk.END, f"Instrument with ID {str(acct_no)} is ended.\n")
         else:
-            print("No instruments have ended this month.\n")'''
+            print("No instruments have ended this month.\n")
 
         # Compare the current and previous month dataframes to check if we missed any instruments
         merged_df = pd.merge(prev_month_dataframe, status_list_dataframe, on="ACCT NO.", how="outer",

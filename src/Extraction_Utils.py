@@ -51,11 +51,20 @@ def fetch_data(app_instance):
         filtered_data = []
 
         # Iterate over the data rows and filter
+        # There are 5 column names needed to determine if a row is applicable for BECRIS or not.
+        # If they ever were to change names in the status list they must be changed here.
+        column_names = {
+            'acct_no': 'ACCT NO.',
+            'sch_a_code': 'sch A acc',
+            'cn': 'CN',
+            'gl_hd': 'GL Hd',
+            'type_acct': 'TYPE OF ACCOUNT'
+        }
         for row in data:
-            acct_no = row[columns.index("ACCT NO.")]
-            sch_a_code = row[columns.index("sch A acc")]
-            cn = str(row[columns.index("CN")])
-            gl_hd = str(row[columns.index("GL Hd")])
+            acct_no = row[columns.index(column_names.get('acct_no'))]
+            sch_a_code = row[columns.index(column_names.get('sch_a_code'))]
+            cn = str(row[columns.index(column_names.get('cn'))])
+            gl_hd = str(row[columns.index(column_names.get('gl_hd'))])
 
             if acct_no and sch_a_code and cn != "ALL" \
                     and str(sch_a_code).startswith(("34321", "34311", "34220", "36300", "36400")):
@@ -71,7 +80,7 @@ def fetch_data(app_instance):
                 row.append(new_acct_no)
 
                 if str(sch_a_code).startswith("36300"):
-                    type_acct = str(row[columns.index("TYPE OF ACCOUNT")])
+                    type_acct = str(row[columns.index(column_names.get('type_acct'))])  # This column is also from the status list
                     if type_acct == "BANK GUARANTEES":
                         filtered_data.append(row)
                 elif str(sch_a_code).startswith(("34321", "34311", "34220", "36400")):

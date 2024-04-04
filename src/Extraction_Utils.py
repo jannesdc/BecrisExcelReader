@@ -3,6 +3,7 @@ import xlwings as xw
 import pandas as pd
 import numpy as np
 import math
+import datetime
 
 from src.GUI import *
 
@@ -200,8 +201,11 @@ def paste_data(app_instance):
         undrawn_values = status_list_dataframe["UNDRAWN"].values
 
         # Prepare the values for insertion
-        mat_date_values_array = [[value if not (pd.isna(value) or np.isnat(value)) else "NotApplicable"] for value in
-                                 mat_date_values]
+        mat_date_values_array = [[value if
+                                  not (pd.isna(value) or (np.isnat(np.datetime64(value)) if isinstance(value, datetime.datetime)
+                                                          else False))
+                                  else "NotApplicable"]
+                                 for value in mat_date_values]
         interest_type_values_array = [[value] if value else ["NotApplicable"] for value in interest_type_values]
         interest_rate_array = []
         undrawn_array = []
@@ -239,7 +243,8 @@ def paste_data(app_instance):
 
     except Exception as e:
         app_instance.menu.extraction_frame.paste_button.configure(fg_color="darkred")
-        print(f"Error: {str(e)}\n")
+        tb = e.__traceback__
+        print(f"Error: {str(e.with_traceback(tb))}\n")
 
 
 def check_new_ended(app_instance):
